@@ -1,36 +1,50 @@
 package net.mountainblade.modular.impl;
 
-import net.mountainblade.modular.ModuleInformation;
-import net.mountainblade.modular.ModuleState;
+import net.mountainblade.modular.Module;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
-/**
- * Represents the MavenModuleInformation.
- *
- * @author spaceemotion
- * @version 1.0
- */
-public class MavenModuleInformation implements ModuleInformation {
+class MavenModuleInformation extends ModuleInformationImpl {
+    private static final String PATH = "/META-INF/maven/" + Module.class.getPackage().getName() + "/pom.properties";
 
-    @Override
-    public String[] getAuthors() {
-        return new String[0];
+
+    MavenModuleInformation() {
+        super(getVersionFromMaven());
     }
 
-    @Override
-    public String getVersion() {
-        return null;
-    }
+    private synchronized static String getVersionFromMaven() {
+        String version = null;
 
-    @Override
-    public ModuleState getState() {
-        return ModuleState.READY;
-    }
+        // try to load from maven properties first
+        try (InputStream is = MavenModuleInformation.class.getResourceAsStream(PATH)) {
+            Properties p = new Properties();
 
-    @Override
-    public Properties getProperties() {
-        return null;
+            if (is != null) {
+                p.load(is);
+
+                version = p.getProperty("version", null);
+            }
+
+        } catch (IOException ignore) {
+            // Ignore
+        }
+
+        // Fallback to using Java API
+        if (version == null) {
+            Package aPackage = MavenModuleInformation.class.getPackage();
+
+            if (aPackage != null) {
+                version = aPackage.getImplementationVersion();
+
+                if (version == null) {
+                    version = aPackage.getSpecificationVersion();
+                }
+            }
+        }
+
+        return version == null ? "unknown" : version;
     }
 
 }
