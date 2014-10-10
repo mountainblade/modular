@@ -12,16 +12,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 /**
- * Represents the Injector.
+ * Represents the Injector for module dependencies.
  *
  * @author spaceemotion
  * @version 1.0
  */
 @Log
-class Injector {
+class Injector extends Destroyable {
     private final ModuleRegistry registry;
 
-    private final Map<Class<? extends Module>, Collection<Entry>> cache; // TODO support multiple annotations
+    private final Map<Class<? extends Module>, Collection<Entry>> cache;
 
 
     Injector(ModuleRegistry registry) {
@@ -42,7 +42,7 @@ class Injector {
                 Inject annotation = field.getAnnotation(Inject.class);
 
                 if (annotation != null) {
-                    entries.add(new FieldEntry(module, annotation, field));
+                    entries.add(new Entry(module, annotation, field));
                 }
             }
 
@@ -64,15 +64,22 @@ class Injector {
         }
     }
 
+    @Override
+    void destroy() {
+        cache.clear();
+    }
 
-    public static abstract class Entry {
+
+    public final class Entry {
         private final Module module;
         private final Inject annotation;
+        private final Field field;
 
 
-        protected Entry(Module module, Inject annotation) {
+        protected Entry(Module module, Inject annotation, Field field) {
             this.module = module;
             this.annotation = annotation;
+            this.field = field;
         }
 
         public Module getModule() {
@@ -83,34 +90,44 @@ class Injector {
             return annotation;
         }
 
-        abstract boolean apply();
-
-    }
-
-
-    public class FieldEntry extends Entry {
-        private final Field field;
-
-
-        private FieldEntry(Module module, Inject annotation, Field field) {
-            super(module, annotation);
-
-            this.field = field;
+        public Field getField() {
+            return field;
         }
 
-        @Override
         @SuppressWarnings("unchecked")
         boolean apply() {
             field.setAccessible(true);
 
-            Class<?> declaringClass = field.getDeclaringClass();
+            Class<?> fieldType = getField().getType();
 
-            if (Module.class.isAssignableFrom(declaringClass)) {
-                Module module = registry.getModule((Class<? extends Module>) declaringClass);
+            if (fieldType.equals(Module.class)) {
+                log.log(Level.WARNING, "Cannot inject field with raw Material type");
+                return false;
+            }
+
+            if (fieldType.equals(getModule().getClass())) {
+                log.log(Level.WARNING, "Cannot inject field with itself (Why would you want to do that?)");
+                return false;
+            }
+
+            if (Module.class.isAssignableFrom(fieldType)) {
+                Class<?> superclass = fieldType;
+                Module module;
+
+                do {
+                    module = registry.getModule((Class<? extends Module>) superclass);
+                    superclass = fieldType.getSuperclass();
+
+                    // Exit when the superclass is not a module anymore
+                    if (superclass == null || !Module.class.isAssignableFrom(superclass)) {
+                        break;
+                    }
+
+                } while (module == null);
 
                 if (module != null) {
                     try {
-                        field.set(getModule(), module);
+                        getField().set(getModule(), module);
                         return true;
 
                     } catch (IllegalAccessException e) {
@@ -123,6 +140,7 @@ class Injector {
 
             return false;
         }
+
     }
 
 }

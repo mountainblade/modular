@@ -4,20 +4,18 @@ import com.google.common.base.Optional;
 import gnu.trove.set.hash.THashSet;
 import lombok.Getter;
 import lombok.extern.java.Log;
-import net.mountainblade.modular.Module;
-import net.mountainblade.modular.ModuleManager;
-import net.mountainblade.modular.UriHelper;
+import net.mountainblade.modular.*;
+import net.mountainblade.modular.annotations.Shutdown;
 import net.mountainblade.modular.impl.locator.ClassLocator;
 import net.mountainblade.modular.impl.locator.ClasspathLocator;
 import org.codehaus.plexus.classworlds.ClassWorld;
 import org.codehaus.plexus.classworlds.realm.DuplicateRealmException;
-import org.codehaus.plexus.classworlds.realm.NoSuchRealmException;
 
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.logging.Level;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -28,6 +26,8 @@ import java.util.regex.Pattern;
  */
 @Log
 public final class ModuleManagerImpl implements ModuleManager {
+    private final Collection<Destroyable> destroyables;
+
     @Getter
     private final ModuleRegistry registry;
 
@@ -42,6 +42,9 @@ public final class ModuleManagerImpl implements ModuleManager {
 
 
     public ModuleManagerImpl() {
+        destroyables = new LinkedList<>();
+
+        // Stuff we need
         classWorld = new ClassWorld();
 
         registry   = new ModuleRegistry();
@@ -51,17 +54,17 @@ public final class ModuleManagerImpl implements ModuleManager {
 
         // Add defaults
         getLocators().add(new ClasspathLocator());
+
+        // Also register ourselves so other modules can use this as implementation via injection
+        registry.addGhostModule(ModuleManager.class, this, new MavenModuleInformation());
+
+        // Add destroyable objects for our shutdown
+        destroyables.add(registry);
+        destroyables.add(loader);
     }
 
     @Override
     public Collection<Module> loadModules(URI uri) {
-        // Detect pattern stuff
-        Pattern pattern = null;
-
-        if (!UriHelper.everything().equals(uri)) {
-            pattern = Pattern.compile((uri.getAuthority() + uri.getPath()).replace("**", ".+").replace("*", "[^\\.]*"));
-        }
-
         // Locate stuff from URI - using different providers (class pat, file, ...)
         Collection<ClasspathLocation> located = new LinkedList<>();
 
@@ -78,27 +81,10 @@ public final class ModuleManagerImpl implements ModuleManager {
         }
 
         // Collect a bunch of classes that are Modules, plus the interface they're implementing
-        Collection<Class<? extends Module>> moduleClasses = new LinkedList<>();
-
-        for (ClasspathLocation location : located) {
-            Collection<String> classNames = findModulesIn(location);
-
-            // Check our possible modules
-            for (String className : classNames) {
-                if (pattern != null) {
-                    Matcher matcher = pattern.matcher(className);
-
-                    if (!matcher.matches()) {
-                        continue;
-                    }
-                }
-
-                Class<? extends Module> moduleClass = loader.loadModuleClass(location, className);
-                if (moduleClass != null) {
-                    moduleClasses.add(moduleClass);
-                }
-            }
-        }
+        Collection<ModuleLoader.ClassEntry> candidates = loader.resolveCandidatesWithPattern(
+                (UriHelper.everything().equals(uri)) ? null :
+                Pattern.compile((uri.getAuthority() + uri.getPath()).replace("**", ".+").replace("*", "[^\\.]*")),
+                located, jarCache);
 
         // Topologically sort the list so we don't have trouble with dependencies
         // TODO
@@ -106,8 +92,8 @@ public final class ModuleManagerImpl implements ModuleManager {
         // Instantiate the classes and inject their dependencies
         Collection<Module> modules = new LinkedList<>();
 
-        for (Class<? extends Module> moduleClass : moduleClasses) {
-            Module module = loader.loadModule(moduleClass);
+        for (ModuleLoader.ClassEntry candidate : candidates) {
+            Module module = loader.loadModule(candidate);
 
             if (module != null) {
                 modules.add(module);
@@ -123,9 +109,39 @@ public final class ModuleManagerImpl implements ModuleManager {
     }
 
     @Override
-    public void destroy() {
+    public Optional<ModuleInformation> getInformation(Class<? extends Module> module) {
+        return Optional.fromNullable(registry.getInformation(module));
+    }
+
+    @Override
+    public void shutdown() {
+        // Send shut down signal to modules
         for (Module module : registry.getModules()) {
-            // TODO call shutdown hook using injector
+            try {
+                AnnotationHelper.callMethodWithAnnotation(module, Shutdown.class);
+
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                log.log(Level.WARNING, "Could not invoke shutdown method on module: " + module, e);
+            }
+
+            // Set state to shutdown
+            ModuleRegistry.Entry entry = registry.getEntry(loader.getClassEntry(module.getClass()).getModule());
+
+            if (entry != null) {
+                ModuleInformation information = entry.getInformation();
+
+                if (information instanceof ModuleInformationImpl) {
+                    ((ModuleInformationImpl) information).setState(ModuleState.SHUTDOWN);
+                }
+                continue;
+            }
+
+            log.warning("Unable to set state to shut down: Could not find entry for module: " + module);
+        }
+
+        // And destroy what we can
+        for (Destroyable destroyable : destroyables) {
+            destroyable.destroy();
         }
     }
 
@@ -134,50 +150,8 @@ public final class ModuleManagerImpl implements ModuleManager {
             classWorld.newRealm(location.getRealm(), getClass().getClassLoader()).addURL(location.getUrl());
 
         } catch (DuplicateRealmException ignore) {
-            // Happens for #classpath realms ...
+            // Happens for classpath realms ...
         }
-    }
-
-    private Collection<String> findModulesIn(ClasspathLocation location) {
-        String canonicalName = Module.class.getCanonicalName();
-
-        LinkedList<String> subClasses = new LinkedList<>();
-        JarCache.Entry cacheEntry = null;
-
-        if (location.isJarFile()) {
-            cacheEntry = jarCache.getEntry(location.getUri());
-        }
-
-        try {
-            ClassLoader classLoader = classWorld.getRealm(location.getRealm());
-            Collection<String> classNames = location.listClassNames();
-
-            for (String className : classNames) {
-                try {
-                    Class<?> aClass = Class.forName(className, false, classLoader);
-
-                    if (aClass.isInterface()) {
-                        continue;
-                    }
-
-                    if (Module.class.isAssignableFrom(aClass) && !canonicalName.equals(aClass.getCanonicalName())) {
-                        subClasses.add(className);
-                    }
-
-                } catch (ClassNotFoundException e) {
-                    log.log(Level.WARNING, "Could not find class although it should exist: " + className, e);
-                }
-            }
-
-        } catch (NoSuchRealmException e) {
-            e.printStackTrace();
-        }
-
-        if (cacheEntry != null) {
-            cacheEntry.getSubclasses().put(canonicalName, subClasses);
-        }
-
-        return subClasses;
     }
 
 }

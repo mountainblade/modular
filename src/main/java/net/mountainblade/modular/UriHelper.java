@@ -23,7 +23,7 @@ public final class UriHelper {
         return URI.create(PREFIX + pattern);
     }
 
-    public static URI of(Class aClass) {
+    public static URI of(Class<? extends Module> aClass) {
         return of(aClass.getCanonicalName());
     }
 

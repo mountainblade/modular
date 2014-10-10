@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 
 /**
- * Represents the ClassLocator.
+ * Represents a ClassLocator.
  *
  * @author spaceemotion
  * @version 1.0
@@ -21,7 +21,7 @@ public abstract class ClassLocator {
     private final Collection<String> nameBlacklist;
 
 
-    public ClassLocator() {
+    protected ClassLocator() {
         uriBlacklist = new LinkedList<>();
         nameBlacklist = new LinkedList<>();
     }

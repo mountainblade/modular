@@ -22,7 +22,7 @@ public interface ModuleManager extends Module {
     Collection<Module> loadModules(URI uri);
 
     /**
-     * Gets a specific module by its interface class.
+     * Gets a specific module by its class.
      *
      * @param module    The module class
      * @return An optional for the module instance
@@ -30,10 +30,18 @@ public interface ModuleManager extends Module {
     <M extends Module> Optional<M> getModule(Class<M> module);
 
     /**
+     * Gets information about a specific module.
+     *
+     * @param module    The module class
+     * @return An optional for the information
+     */
+    Optional<ModuleInformation> getInformation(Class<? extends Module> module);
+
+    /**
      * Tells the manager to shut down and destroy all loaded modules.
      * <br>
      * This can be useful for cases in which you want to have a clear, fresh start.
      */
-    void destroy();
+    void shutdown();
 
 }

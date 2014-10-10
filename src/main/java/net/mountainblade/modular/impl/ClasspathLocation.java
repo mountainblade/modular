@@ -42,6 +42,9 @@ public class ClasspathLocation {
         }
     }
 
+
+    // TODO move logic to separate class
+
     public Collection<String> listClassNames() {
         LinkedList<String> classNames = new LinkedList<>();
 

@@ -1,7 +1,7 @@
 package net.mountainblade.modular;
 
 /**
- * Represents the Module.
+ * Represents a base for modules.
  *
  * @author spaceemotion
  * @version 1.0

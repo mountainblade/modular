@@ -1,7 +1,7 @@
 package net.mountainblade.modular.impl;
 
 /**
- * Represents the InjectFailedException.
+ * Represents an exception that gets thrown when an injection failed.
  *
  * @author spaceemotion
  * @version 1.0

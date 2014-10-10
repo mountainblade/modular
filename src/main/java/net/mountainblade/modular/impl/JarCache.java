@@ -26,7 +26,6 @@ class JarCache {
         this.cache = new THashMap<>();
     }
 
-
     public Entry getEntry(URI uri) {
         File file = new File(uri);
         String hash = generateHash(file);
@@ -49,6 +48,7 @@ class JarCache {
     private String generateHash(File file) {
         return "weak:" + file.getName() + "@" + file.length();
     }
+
 
     @Data
     public static class Entry {

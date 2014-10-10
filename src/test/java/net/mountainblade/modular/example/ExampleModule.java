@@ -1,7 +1,8 @@
 package net.mountainblade.modular.example;
 
 import net.mountainblade.modular.Module;
-import net.mountainblade.modular.annotations.Implementation;
+import net.mountainblade.modular.ModuleManager;
+import net.mountainblade.modular.annotations.*;
 
 /**
  * Represents the ExampleModule.
@@ -11,4 +12,19 @@ import net.mountainblade.modular.annotations.Implementation;
  */
 @Implementation
 public class ExampleModule implements Module {
+    @Inject
+    private ModuleManager moduleManager;
+
+
+    @Initialize
+    public void init() {
+        System.out.println("Hello World, using a lightweight module system!");
+        System.out.println(moduleManager);
+    }
+
+    @Shutdown
+    public void destroy() {
+        System.out.println("Bye bye");
+    }
+
 }
