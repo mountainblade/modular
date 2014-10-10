@@ -23,3 +23,5 @@ import net.mountainblade.modular.annotations.Implementation;
 public class ExampleModule implements Module {
 }
 ```
+
+For further usage examples just look at the test cases.

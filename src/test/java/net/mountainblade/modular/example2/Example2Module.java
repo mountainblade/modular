@@ -9,4 +9,7 @@ import net.mountainblade.modular.Module;
  * @version 1.0
  */
 public interface Example2Module extends Module {
+
+    int calculateRandomNumber();
+
 }

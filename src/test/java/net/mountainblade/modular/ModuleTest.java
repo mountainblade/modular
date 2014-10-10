@@ -39,6 +39,9 @@ public class ModuleTest {
         Assert.assertEquals(information.getVersion(), Example2ModuleImpl.VERSION);
         Assert.assertArrayEquals(information.getAuthors(), new String[]{Example2ModuleImpl.AUTHOR});
 
+        System.out.println("Random number of the moment: " + moduleManager.getModule(Example2Module.class).get()
+                .calculateRandomNumber());
+
         // And shut down the systems
         moduleManager.shutdown();
     }
