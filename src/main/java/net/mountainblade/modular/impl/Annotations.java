@@ -8,8 +8,9 @@ import java.util.Arrays;
 
 class Annotations {
 
-    public static <T extends Annotation> void callMethodWithAnnotation(Object object, Class<T> annotation, int required,
-                                                                       Class<?>[] argTypes, Object... args)
+    public static <T extends Annotation> Object callMethodWithAnnotation(Object object, Class<T> annotation,
+                                                                         int required, Class<?>[] argTypes,
+                                                                         Object... args)
             throws InvocationTargetException, IllegalAccessException {
 
         for (Method method : object.getClass().getDeclaredMethods()) {
@@ -32,12 +33,13 @@ class Annotations {
                 if (isApplicable(Arrays.copyOf(methodParameterTypes, counter), argTypes)) {
                     // Make accessible and invoke the method
                     method.setAccessible(true);
-                    method.invoke(object, Arrays.copyOf(args, counter));
-                    break;
+                    return method.invoke(object, Arrays.copyOf(args, counter));
                 }
 
             } while ((counter--) >= required);
         }
+
+        return null;
     }
 
     private static boolean isApplicable(Class<?>[] method, Class<?>[] parameters) {
