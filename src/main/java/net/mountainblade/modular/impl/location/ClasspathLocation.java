@@ -43,12 +43,12 @@ public class ClasspathLocation extends ClassLocation {
                     // Replace path prefix and ending slash
                     .substring(rootPath.length() + 1)
 
+                    // Remove trailing .class
+                    .replace(FILE_SUFFIX, "")
+
                     // Make the file name a proper class name
                     .replace("\\", "/")
-                    .replace("/", ".")
-
-                    // Remove trailing .class
-                    .replace(FILE_SUFFIX, "");
+                    .replace("/", ".");
 
             // Only add if we got a name that is not on the blacklist for class names either
             if (!isBlacklisted(name)) {

@@ -28,7 +28,7 @@ public class ModuleTest {
 
 
     @Test
-    @Repeat(10)
+    @Repeat(3) // Repeat because the topological sort is kind of random
     public void testModules() throws Exception {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
