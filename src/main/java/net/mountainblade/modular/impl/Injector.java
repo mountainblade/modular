@@ -2,6 +2,7 @@ package net.mountainblade.modular.impl;
 
 import lombok.extern.java.Log;
 import net.mountainblade.modular.Module;
+import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.annotations.Inject;
 
 import java.lang.reflect.Field;
@@ -10,6 +11,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Represents the Injector for module dependencies.
@@ -17,7 +19,6 @@ import java.util.logging.Level;
  * @author spaceemotion
  * @version 1.0
  */
-// TODO support other stuff to inject: logger, information, ...
 @Log
 class Injector implements Destroyable {
     private final Map<Class<? extends Module>, Collection<Entry>> cache;
@@ -31,6 +32,7 @@ class Injector implements Destroyable {
         this.cache = new ConcurrentHashMap<>();
     }
 
+    @SuppressWarnings("unchecked")
     public Collection<Entry> discover(Class<? extends Module> implementationClass) {
         Collection<Entry> entries = cache.get(implementationClass);
 
@@ -40,14 +42,39 @@ class Injector implements Destroyable {
             // Loop through the fields
             for (Field field : implementationClass.getDeclaredFields()) {
                 Inject annotation = field.getAnnotation(Inject.class);
+                if (annotation == null) {
+                    continue;
+                }
 
-                if (annotation != null) {
-                    try {
-                        entries.add(new ModuleEntry(implementationClass, annotation, field));
+                // Fetch dependency and do some checks beforehand
+                Class<?> fieldType = field.getType();
 
-                    } catch (InjectFailedException e) {
-                        log.log(Level.WARNING, "Error with dependency entry for implementation, injects will fail", e);
+                try {
+                    if (fieldType.equals(Module.class)) {
+                        throw new InjectFailedException("Cannot inject field with raw Material type");
                     }
+
+                    if (fieldType.equals(implementationClass.getClass())) {
+                        throw new InjectFailedException("Cannot inject field with itself (Why would you do that?)");
+                    }
+
+                    if (Logger.class.equals(fieldType)) {
+                        entries.add(new LoggerEntry(annotation, implementationClass, field));
+
+                    } else if (ModuleInformation.class.equals(fieldType)) {
+                        entries.add(new InformationEntry(annotation, implementationClass, field));
+
+                    } else if (Module.class.isAssignableFrom(fieldType)) {
+                        // Our to normal module injection
+                        entries.add(new ModuleEntry(annotation, implementationClass, field,
+                                (Class<? extends Module>) fieldType));
+
+                    } else {
+                        throw new InjectFailedException("Dependency is not a module or special type: " + fieldType);
+                    }
+
+                } catch (InjectFailedException e) {
+                    log.log(Level.WARNING, "Error with dependency entry for implementation, injects will fail", e);
                 }
             }
 
@@ -58,7 +85,7 @@ class Injector implements Destroyable {
         return entries;
     }
 
-    public void inject(Module implementation) throws InjectFailedException {
+    public void inject(ModuleRegistry.Entry moduleEntry, Module implementation) throws InjectFailedException {
         Class<? extends Module> implementationClass = implementation.getClass();
         Collection<Entry> entries = discover(implementationClass);
 
@@ -68,7 +95,7 @@ class Injector implements Destroyable {
                 continue;
             }
 
-            if (!entry.apply(implementation)) {
+            if (!entry.apply(moduleEntry, implementation)) {
                 throw new InjectFailedException("Failed to inject dependencies: " + entry.getModule());
             }
         }
@@ -81,12 +108,16 @@ class Injector implements Destroyable {
 
 
     public abstract class Entry {
-        protected final Class<? extends Module> module;
-        protected final Inject annotation;
-        protected final Field field;
+        private final String type;
+
+        private final Class<? extends Module> module;
+        private final Inject annotation;
+        private final Field field;
 
 
-        protected Entry(Inject annotation, Class<? extends Module> module, Field field) {
+        protected Entry(String type, Inject annotation, Class<? extends Module> module, Field field) {
+            this.type = type;
+
             this.annotation = annotation;
             this.module = module;
             this.field = field;
@@ -104,33 +135,64 @@ class Injector implements Destroyable {
             return field;
         }
 
-        abstract boolean apply(Module module);
+        abstract boolean apply(ModuleRegistry.Entry moduleEntry, Module module);
+
+        protected boolean injectField(Module module, Object object) {
+            if (object != null) {
+                try {
+                    field.setAccessible(true);
+                    getField().set(module, object);
+
+                    return true;
+
+                } catch (IllegalAccessException e) {
+                    log.log(Level.SEVERE, "Could not inject module with " + type, e);
+                }
+            }
+
+            return getAnnotation().optional();
+        }
+
+    }
+
+    public final class LoggerEntry extends Entry {
+
+        protected LoggerEntry(Inject annotation, Class<? extends Module> module, Field field) {
+            super("logger", annotation, module, field);
+        }
+
+        @Override
+        boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
+            Logger logger = Logger.getLogger(module.getClass().getName());
+            moduleEntry.setLogger(logger);
+
+            return injectField(module, logger);
+        }
+
+    }
+
+    public final class InformationEntry extends Entry {
+
+        protected InformationEntry(Inject annotation, Class<? extends Module> module, Field field) {
+            super("information object", annotation, module, field);
+        }
+
+        @Override
+        boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
+            return injectField(module, moduleEntry.getInformation());
+        }
+
     }
 
     public final class ModuleEntry extends Entry {
         private final Class<? extends Module> dependency;
 
 
-        @SuppressWarnings("unchecked")
-        protected ModuleEntry(Class<? extends Module> module, Inject annotation, Field field) throws InjectFailedException {
-            super(annotation, module, field);
+        protected ModuleEntry(Inject annotation, Class<? extends Module> module, Field field,
+                              Class<? extends Module> dependency) throws InjectFailedException {
+            super("module dependency", annotation, module, field);
 
-            // Fetch dependency and do some checks beforehand
-            Class<?> fieldType = getField().getType();
-
-            if (fieldType.equals(Module.class)) {
-                throw new InjectFailedException("Cannot inject field with raw Material type");
-            }
-
-            if (fieldType.equals(module.getClass())) {
-                throw new InjectFailedException("Cannot inject field with itself (Why would you want to do that?)");
-            }
-
-            if (!Module.class.isAssignableFrom(fieldType)) {
-                throw new InjectFailedException("Dependency is not a module: " + fieldType);
-            }
-
-            dependency = (Class<? extends Module>) fieldType;
+            this.dependency = dependency;
         }
 
         public Class<? extends Module> getDependency() {
@@ -139,7 +201,7 @@ class Injector implements Destroyable {
 
         @Override
         @SuppressWarnings("unchecked")
-        boolean apply(Module module) {
+        boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
             Class<?> fieldType = getField().getType();
 
             if (fieldType.equals(Module.class)) {
@@ -170,19 +232,8 @@ class Injector implements Destroyable {
 
                 } while (dependency == null);
 
-                if (dependency != null) {
-                    try {
-                        field.setAccessible(true);
-                        getField().set(module, dependency);
-
-                        return true;
-
-                    } catch (IllegalAccessException e) {
-                        log.log(Level.SEVERE, "Could not inject module with dependency", e);
-                    }
-                }
-
-                return getAnnotation().optional();
+                // Inject the dependency
+                return injectField(module, dependency);
             }
 
             return false;

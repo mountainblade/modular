@@ -1,6 +1,7 @@
 package net.mountainblade.modular.example;
 
 import net.mountainblade.modular.Module;
+import net.mountainblade.modular.ModuleManager;
 import net.mountainblade.modular.annotations.Implementation;
 import net.mountainblade.modular.annotations.Initialize;
 import net.mountainblade.modular.annotations.Inject;
@@ -20,9 +21,9 @@ public class ExampleModule implements Module {
 
 
     @Initialize
-    public void init() { // ModuleManager moduleManager
+    public void init(ModuleManager moduleManager) {
         System.out.println("Hello World, using a lightweight module system!");
-        // System.out.println("Dependencies: " + moduleManager + " and " + example2Module);
+        System.out.println("Dynamically injected manager: " + moduleManager);
     }
 
     @Shutdown

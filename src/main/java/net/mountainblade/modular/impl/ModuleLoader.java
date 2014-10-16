@@ -70,7 +70,7 @@ class ModuleLoader implements Destroyable {
             information.setState(ModuleState.LOADING);
 
             // Inject dependencies
-            injector.inject(module);
+            injector.inject(moduleEntry, module);
 
             // Set to loaded
             Annotations.callMethodWithAnnotation(module, Initialize.class, 0, new Class[]{ModuleManager.class},

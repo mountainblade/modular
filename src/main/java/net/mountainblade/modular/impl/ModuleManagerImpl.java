@@ -141,9 +141,12 @@ public final class ModuleManagerImpl implements ModuleManager {
         for (TopologicalSortedList.Node<ModuleLoader.ClassEntry> candidate : sortedCandidates) {
             Module module = loader.loadModule(this, candidate.getValue());
 
-            if (module != null) {
-                modules.add(module);
+            if (module == null) {
+                log.warning("Could not load modules properly, cancelling loading procedure");
+                break;
             }
+
+            modules.add(module);
         }
 
         return modules;
