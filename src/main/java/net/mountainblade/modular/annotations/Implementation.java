@@ -18,7 +18,8 @@ import java.lang.annotation.Target;
  * <p>If the annotated class extends some abstract base that implements the module, the system will discover this on its
  * own. If you want to be specific, specify the module using the {@link #module()} parameter.</p>
  *
- * <p>It is not possible that an implementation implements two different modules - even if they are interfaces.</p>
+ * <p>It is not possible that an implementation implements two different modules - even if they are interfaces. It is
+ * also not possible to have multiple implementations of a module.</p>
  *
  * @author spaceemotion
  * @version 1.0
@@ -31,12 +32,19 @@ public @interface Implementation {
      * The class for the module we want to implement.
      * If left at default value, the system will automatically resolve this.
      */
-    Class<? extends Module> module() default Module.class;
+    Class<? extends Module> module() default Default.class;
 
     /** Holds a list of all authors that worked on the module, can be left empty */
     String[] authors() default {};
 
     /** The module version or build ID */
     String version() default "unknown";
+
+    /**
+     * Default implementation representing that an implementation should use its default implementation (current class).
+     *
+     * @see #module()
+     */
+    final class Default implements Module {}
 
 }

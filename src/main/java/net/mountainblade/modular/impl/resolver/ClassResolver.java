@@ -1,19 +1,19 @@
-package net.mountainblade.modular.impl.locator;
+package net.mountainblade.modular.impl.resolver;
 
 import lombok.Getter;
-import net.mountainblade.modular.impl.ClasspathLocation;
+import net.mountainblade.modular.impl.location.ClasspathLocation;
 
 import java.net.URI;
 import java.util.Collection;
 import java.util.LinkedList;
 
 /**
- * Represents a ClassLocator.
+ * Represents a resolver for classes.
  *
  * @author spaceemotion
  * @version 1.0
  */
-public abstract class ClassLocator {
+public abstract class ClassResolver {
     @Getter
     private final Collection<URI> uriBlacklist;
 
@@ -21,7 +21,7 @@ public abstract class ClassLocator {
     private final Collection<String> nameBlacklist;
 
 
-    protected ClassLocator() {
+    protected ClassResolver() {
         uriBlacklist = new LinkedList<>();
         nameBlacklist = new LinkedList<>();
     }
@@ -29,7 +29,7 @@ public abstract class ClassLocator {
 
     public abstract boolean handles(URI uri);
 
-    public abstract Collection<ClasspathLocation> discover(URI uri);
+    public abstract Collection<ClasspathLocation> resolve(URI uri);
 
 
     protected final boolean isBlacklisted(URI uri) {

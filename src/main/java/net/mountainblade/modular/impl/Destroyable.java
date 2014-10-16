@@ -1,7 +1,7 @@
 package net.mountainblade.modular.impl;
 
-abstract class Destroyable {
+interface Destroyable {
 
-    abstract void destroy();
+    void destroy();
 
 }

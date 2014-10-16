@@ -1,13 +1,25 @@
 package net.mountainblade.modular.annotations;
 
+import net.mountainblade.modular.Module;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Represents an annotation that, if attached, automatically fills fields with their dependencies when a module gets
- * loaded. This will also result in a topological sorting of modules to (hopefully) prevent any dependency issues.
+ * <p>Represents an annotation that, if attached, automatically fills fields with their dependencies when a module gets
+ * loaded. This will also result in a topological sorting of modules to (hopefully) prevent any dependency issues.</p>
+ *
+ * <p>There are some special cases of "dependencies" that will get resolved automatically and handled differently. Some
+ * of these special cases also take the {@link #from()} parameter into account, if you want to get objects from other
+ * modules (cross-dependency injection).
+ * <ul>
+ *     <li>{@link java.util.logging.Logger Logger} - If the field is a logger this will be filled with a module-specific
+ *     logger instance. <b>No cross-dependency injection</b></li>
+ *     <li>{@link net.mountainblade.modular.ModuleInformation ModuleInformation} - Holds the current module's
+ *     information or the information of the specified one.</li>
+ * </ul></p>
  *
  * @author spaceemotion
  * @version 1.0
@@ -16,7 +28,17 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Inject {
 
-    /** If specified, the dependency can be left at null if it cannot be found. */
+    /** If specified, the object won't be injected and can be left at null, if it cannot be found. */
     boolean optional() default false;
+
+    /** If specified, this will get the object from another module instead (cross-dependency injection). */
+    Class<? extends Module> from() default Current.class;
+
+    /**
+     * Default implementation representing that an injection should use the current model instance.
+     *
+     * @see #from()
+     */
+    final class Current implements Module {}
 
 }

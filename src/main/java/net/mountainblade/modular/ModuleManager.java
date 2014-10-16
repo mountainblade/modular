@@ -38,6 +38,13 @@ public interface ModuleManager extends Module {
     Optional<ModuleInformation> getInformation(Class<? extends Module> module);
 
     /**
+     * Gets a collection of all registered Modules.
+     *
+     * @return All registered modules in an unmodifiable collection
+     */
+    Collection<Module> getModules();
+
+    /**
      * Tells the manager to shut down and destroy all loaded modules.
      * <br>
      * This can be useful for cases in which you want to have a clear, fresh start.

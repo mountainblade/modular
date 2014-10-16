@@ -1,6 +1,7 @@
 package net.mountainblade.modular;
 
 import java.net.URI;
+import java.util.regex.Pattern;
 
 /**
  * Represents the UriHelper.
@@ -9,7 +10,7 @@ import java.net.URI;
  * @version 1.0
  */
 public final class UriHelper {
-    private static final String PREFIX = "classpath://";
+    public static final String PREFIX = "classpath://";
 
 
     private UriHelper() {
@@ -33,6 +34,10 @@ public final class UriHelper {
 
     public static boolean matchesScheme(URI uri, String scheme) {
         return uri != null && uri.getScheme().equals(scheme);
+    }
+
+    public static Pattern createPattern(URI uri) {
+        return Pattern.compile((uri.getAuthority() + uri.getPath()).replace("**", ".+").replace("*", "[^\\.]*"));
     }
 
 }

@@ -5,15 +5,22 @@ import gnu.trove.set.hash.THashSet;
 import lombok.Data;
 import lombok.extern.java.Log;
 import net.mountainblade.modular.Module;
+import net.mountainblade.modular.ModuleManager;
 import net.mountainblade.modular.ModuleState;
 import net.mountainblade.modular.annotations.Implementation;
 import net.mountainblade.modular.annotations.Initialize;
+import net.mountainblade.modular.annotations.Inject;
+import net.mountainblade.modular.impl.location.ClassLocation;
+import net.mountainblade.modular.impl.location.JarClassLocation;
 import org.codehaus.plexus.classworlds.ClassWorld;
 import org.codehaus.plexus.classworlds.realm.NoSuchRealmException;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,8 +31,9 @@ import java.util.regex.Pattern;
  * @author spaceemotion
  * @version 1.0
  */
+// TODO check for overloading of modules (two implementations are not allowed)
 @Log
-public class ModuleLoader extends Destroyable {
+class ModuleLoader implements Destroyable {
     private final ClassWorld classWorld;
     private final ModuleRegistry registry;
     private final Injector injector;
@@ -45,7 +53,7 @@ public class ModuleLoader extends Destroyable {
     }
 
 
-    public Module loadModule(ClassEntry classEntry) {
+    public Module loadModule(ModuleManager moduleManager, ClassEntry classEntry) {
         Implementation annotation = classEntry.getAnnotation();
 
         ModuleInformationImpl information = new ModuleInformationImpl(annotation.version(), annotation.authors());
@@ -65,13 +73,15 @@ public class ModuleLoader extends Destroyable {
             injector.inject(module);
 
             // Set to loaded
-            AnnotationHelper.callMethodWithAnnotation(module, Initialize.class);
+            Annotations.callMethodWithAnnotation(module, Initialize.class, 0, new Class[]{ModuleManager.class},
+                    moduleManager);
 
-            // Also add to registry
+            // Set to ready and add to registry, but also add the instance in "ghost mode"
             information.setState(ModuleState.READY);
             moduleEntry.setModule(module);
 
             registry.addModule(classEntry.getModule(), moduleEntry, false);
+            registry.addModule(classEntry.getImplementation(), moduleEntry, true);
 
             return module;
 
@@ -88,7 +98,7 @@ public class ModuleLoader extends Destroyable {
         return null;
     }
 
-    public Class<?> loadClass(ClasspathLocation location, String className) throws ClassNotFoundException {
+    public Class<?> loadClass(ClassLocation location, String className) throws ClassNotFoundException {
         if (location != null) {
             try {
                 return classWorld.getRealm(location.getRealm()).loadClass(className);
@@ -101,57 +111,61 @@ public class ModuleLoader extends Destroyable {
         return getClass().getClassLoader().loadClass(className);
     }
 
-    public ClassEntry getClassEntry(Class<? extends Module> aClass) {
+    public ClassEntry getClassEntry(Class<? extends Module> implClass) {
         // Early checking for null, against module, and if we already checked and saw that it's invalid
-        if (aClass == null || Module.class.equals(aClass) || invalidCache.contains(aClass)) {
+        if (implClass == null || Module.class.equals(implClass) || Implementation.Default.class.equals(implClass) ||
+                Inject.Current.class.equals(implClass) || invalidCache.contains(implClass)) {
             return null;
         }
 
         // Check lookup first
-        ClassEntry classEntry = classCache.get(aClass);
+        ClassEntry classEntry = classCache.get(implClass);
 
         // If we found nothing, take the hard route
         if (classEntry == null) {
             // We do not allow interface or annotation modules - that would not work and is thus just ... silly
-            if (aClass.isInterface() || aClass.isAnnotation()) {
-                invalidCache.add(aClass);
+            if (implClass.isInterface() || implClass.isAnnotation()) {
+                invalidCache.add(implClass);
                 return null;
             }
 
             // Return null for classes that don't have the annotation
-            Implementation implementation = aClass.getAnnotation(Implementation.class);
+            Implementation implementation = implClass.getAnnotation(Implementation.class);
             if (implementation == null) {
-                invalidCache.add(aClass);
+                invalidCache.add(implClass);
                 return null;
             }
 
             // Get correct module class
             Class<? extends Module> module;
 
-            if (!implementation.module().equals(Module.class)) {
+            if (!implementation.module().equals(Implementation.Default.class)) {
                 // The developer already provided the wanted class so we'll gladly use that instead
                 module = implementation.module();
 
             } else {
                 // Well, no things found, so we have to discover the module class on our own
-                module = getModuleClassRecursively(aClass);
+                module = getModuleClassRecursively(implClass);
 
                 if (module == null) {
-                    invalidCache.add(aClass);
+                    invalidCache.add(implClass);
                     return null;
                 }
             }
 
-            // Add to cache so we don't need to do all this again (only if we found something)
-            classEntry = new ClassEntry(module, aClass, implementation);
-            classCache.put(aClass, classEntry);
+            // Get dependencies via the injector, create new class entry and add to cache so we don't need to this again
+            classEntry = new ClassEntry(module, implClass, implementation, injector.discover(implClass));
+            classCache.put(implClass, classEntry);
+
+            // Also add the module, so we can get our dependencies right
+            classCache.put(module, classEntry);
         }
 
         return classEntry;
     }
 
     @Override
-    void destroy() {
+    public void destroy() {
         injector.destroy();
 
         invalidCache.clear();
@@ -159,17 +173,16 @@ public class ModuleLoader extends Destroyable {
     }
 
     @SuppressWarnings("unchecked")
-    Collection<ClassEntry> resolveCandidatesWithPattern(Pattern pattern, Collection<ClasspathLocation> located,
-                                                        JarCache cache) {
+    Collection<ClassEntry> getCandidatesWithPattern(Pattern regex, Collection<ClassLocation> located, JarCache cache) {
         Collection<ClassEntry> moduleClasses = new LinkedList<>();
 
-        for (ClasspathLocation location : located) {
+        for (ClassLocation location : located) {
             Collection<String> classNames = findModulesIn(cache, location);
 
             // Check our possible modules
             for (String className : classNames) {
-                if (pattern != null) {
-                    Matcher matcher = pattern.matcher(className);
+                if (regex != null) {
+                    Matcher matcher = regex.matcher(className);
 
                     if (!matcher.matches()) {
                         continue;
@@ -226,13 +239,13 @@ public class ModuleLoader extends Destroyable {
         return moduleClass;
     }
 
-    private Collection<String> findModulesIn(JarCache cache, ClasspathLocation location) {
+    private Collection<String> findModulesIn(JarCache cache, ClassLocation location) {
         String canonicalName = Module.class.getCanonicalName();
 
         LinkedList<String> subClasses = new LinkedList<>();
         JarCache.Entry cacheEntry = null;
 
-        if (location.isJarFile()) {
+        if (location instanceof JarClassLocation) {
             cacheEntry = cache.getEntry(location.getUri());
         }
 
@@ -274,6 +287,7 @@ public class ModuleLoader extends Destroyable {
         private final Class<? extends Module> module;
         private final Class<? extends Module> implementation;
         private final Implementation annotation;
+        private final Collection<Injector.Entry> dependencies;
     }
 
 }

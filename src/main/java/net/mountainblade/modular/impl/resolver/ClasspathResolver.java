@@ -1,9 +1,9 @@
-package net.mountainblade.modular.impl.locator;
+package net.mountainblade.modular.impl.resolver;
 
 import com.google.common.base.Splitter;
 import lombok.extern.java.Log;
 import net.mountainblade.modular.UriHelper;
-import net.mountainblade.modular.impl.ClasspathLocation;
+import net.mountainblade.modular.impl.location.ClasspathLocation;
 
 import java.io.File;
 import java.net.URI;
@@ -22,14 +22,14 @@ import java.util.logging.Level;
  * @version 1.0
  */
 @Log
-public class ClasspathLocator extends ClassLocator {
+public class ClasspathResolver extends ClassResolver {
     private static final String CLASS_PATH_SEPARATOR = System.getProperty("path.separator");
     private static final String JAVA_CLASS_PATH = System.getProperty("java.class.path");
 
     private static final List<String> CLASSES = Splitter.on(CLASS_PATH_SEPARATOR).splitToList(JAVA_CLASS_PATH);
 
 
-    public ClasspathLocator() {
+    public ClasspathResolver() {
         // Get root class loader
         ClassLoader loader = ClassLoader.getSystemClassLoader();
         while (loader != null && loader.getParent() != null) {
@@ -61,7 +61,7 @@ public class ClasspathLocator extends ClassLocator {
     }
 
     @Override
-    public Collection<ClasspathLocation> discover(URI uri) {
+    public Collection<ClasspathLocation> resolve(URI uri) {
         // Create general list of sources
         // We do not do this in a static context since we can always add filters at runtime later on
         Collection<ClasspathLocation> locations = new LinkedList<>();

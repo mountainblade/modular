@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 /**
  * Represents the ModuleRegistry.
@@ -16,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author spaceemotion
  * @version 1.0
  */
-public final class ModuleRegistry extends Destroyable {
+final class ModuleRegistry implements Destroyable {
     private final Map<Class<? extends Module>, Entry> registry;
     private final Collection<Module> modules;
 
@@ -42,7 +43,10 @@ public final class ModuleRegistry extends Destroyable {
     }
 
     void addGhostModule(Class<? extends Module> moduleClass, Module module, ModuleInformation information) {
-        addModule(moduleClass, new Entry(module, information), true);
+        Entry entry = new Entry(information);
+        entry.setModule(module);
+
+        addModule(moduleClass, entry, true);
     }
 
     void addModule(Class<? extends Module> moduleClass, Entry entry, boolean ghost) {
@@ -59,7 +63,7 @@ public final class ModuleRegistry extends Destroyable {
             return null;
         }
 
-        Entry entry = new Entry(null, information);
+        Entry entry = new Entry(information);
         registry.put(moduleClass, entry);
 
         return entry;
@@ -70,19 +74,23 @@ public final class ModuleRegistry extends Destroyable {
     }
 
     @Override
-    void destroy() {
+    public void destroy() {
         registry.clear();
         modules.clear();
     }
 
 
-    @AllArgsConstructor
+    @RequiredArgsConstructor
     @Getter
     @EqualsAndHashCode
     static class Entry {
+        private final ModuleInformation information;
+
         @Setter(AccessLevel.PACKAGE)
         private Module module;
-        private final ModuleInformation information;
+
+        @Setter
+        private Logger logger;
     }
 
 }
