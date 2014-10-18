@@ -70,9 +70,9 @@ public final class ModuleManagerImpl implements ModuleManager {
     }
 
     @Override
-    public void provide(Module module) {
+    public void provideSimple(Module module) {
         if (module == null) {
-            log.warning("Provided with null instance, did not add to registry");
+            log.warning("Provided with null instance, will not add to registry");
             return;
         }
 
@@ -82,6 +82,26 @@ public final class ModuleManagerImpl implements ModuleManager {
 
         ModuleInformationImpl information = new ModuleInformationImpl(annotation.version(), annotation.authors());
         loader.registerEntry(entry, module, information, registry.createEntry(entry.getModule(), information));
+    }
+
+    @Override
+    public void provide(Module module) {
+        if (module == null) {
+            log.warning("Provided with null instance, will not add to registry");
+            return;
+        }
+
+        // Get class entry and implementation annotation
+        ModuleLoader.ClassEntry entry = loader.getClassEntry(module.getClass());
+        Implementation annotation = entry.getAnnotation();
+
+        // Create registry entry
+        ModuleInformationImpl information = new ModuleInformationImpl(annotation.version(), annotation.authors());
+        ModuleRegistry.Entry moduleEntry = registry.createEntry(entry.getModule(), information);
+
+        // Inject dependencies and register module
+        loader.injectAndInitialize(this, module, information, moduleEntry);
+        loader.registerEntry(entry, module, information, moduleEntry);
     }
 
     @Override

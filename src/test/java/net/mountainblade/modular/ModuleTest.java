@@ -76,7 +76,7 @@ public class ModuleTest {
 
         // Check if we can have multiple instances running
         ModuleManager manager2 = new ModuleManagerImpl();
-        manager2.provide(manager.getModule(Example2Module.class).orNull());
+        manager2.provideSimple(manager.getModule(Example2Module.class).orNull());
         Assert.assertEquals(2, manager2.loadModules(UriHelper.of(ExampleModule.class)).size());
 
         // And shut down the systems

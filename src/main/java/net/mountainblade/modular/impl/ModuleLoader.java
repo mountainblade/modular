@@ -71,14 +71,8 @@ class ModuleLoader implements Destroyable {
 
             module = constructor.newInstance();
 
-            // Set to loading
-            information.setState(ModuleState.LOADING);
-
-            // Inject dependencies
-            injector.inject(moduleEntry, module);
-
-            // Set to loaded
-            Annotations.call(module, Initialize.class, 0, new Class[]{ModuleManager.class}, moduleManager);
+            // Set to load and initialize the module
+            injectAndInitialize(moduleManager, module, information, moduleEntry);
 
             // Set to ready and add to registry, but also add the instance in "ghost mode"
             registerEntry(classEntry, module, information, moduleEntry);
@@ -90,12 +84,29 @@ class ModuleLoader implements Destroyable {
 
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
             log.log(Level.WARNING, "Could not instantiate module implementation", e);
-
-        } catch (InjectFailedException e) {
-            log.log(Level.WARNING, "Could not load module implementation", e);
         }
 
         return null;
+    }
+
+    public void injectAndInitialize(ModuleManager manager, Module module, ModuleInformationImpl information,
+                                    ModuleRegistry.Entry moduleEntry) {
+        try {
+            // Set to loading state
+            information.setState(ModuleState.LOADING);
+
+            // Inject dependencies
+            injector.inject(moduleEntry, module);
+
+            // Call initialize method
+            Annotations.call(module, Initialize.class, 0, new Class[]{ModuleManager.class}, manager);
+
+        } catch (InjectFailedException e) {
+            log.log(Level.WARNING, "Could not load module implementation", e);
+
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            log.log(Level.WARNING, "Could not call initialize method on module implementation", e);
+        }
     }
 
     public void registerEntry(ClassEntry classEntry, Module module, ModuleInformationImpl information,

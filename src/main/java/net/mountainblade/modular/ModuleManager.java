@@ -14,9 +14,19 @@ import java.util.Collection;
 public interface ModuleManager extends Module {
 
     /**
-     * Provide a module.
+     * Simply provides a module instance and stores it in the registry.
      *
      * @param module the module
+     * @see #provide(Module)
+     */
+    void provideSimple(Module module);
+
+    /**
+     * Stored the given module instance to the registry, but also executes all injection magic and calls the usual
+     * methods.
+     *
+     * @param module the module
+     * @see #provideSimple(Module)
      */
     void provide(Module module);
 
