@@ -16,19 +16,22 @@ import net.mountainblade.modular.example2.Example2Module;
  */
 @Implementation
 public class ExampleModule implements Module {
+    public static final String PREFIX = '[' + ExampleModule.class.getSimpleName() + "] ";
+
     @Inject
     private Example2Module example2Module;
 
 
     @Initialize
     public void init(ModuleManager moduleManager) {
-        System.out.println("Hello World, using a lightweight module system!");
-        System.out.println("Dynamically injected manager: " + moduleManager);
+        System.out.println(PREFIX + "Hello World, using a lightweight module system!");
+        System.out.println(PREFIX + "Dynamically injected method parameter: " + moduleManager);
+        System.out.println(PREFIX + "Dynamically injected field: " + example2Module);
     }
 
     @Shutdown
     public void destroy() {
-        System.out.println("Bye bye");
+        System.out.println(PREFIX + "Bye bye");
     }
 
 }

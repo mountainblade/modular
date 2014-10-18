@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
- * Represents the ModuleRegistry.
+ * Represents a registry for modules. It also stores all additional instances that belong to that module.
  *
  * @author spaceemotion
  * @version 1.0
@@ -82,14 +82,11 @@ final class ModuleRegistry implements Destroyable {
 
     @RequiredArgsConstructor
     @Getter
+    @Setter(AccessLevel.PACKAGE)
     @EqualsAndHashCode
     static class Entry {
         private final ModuleInformation information;
-
-        @Setter(AccessLevel.PACKAGE)
         private Module module;
-
-        @Setter
         private Logger logger;
     }
 

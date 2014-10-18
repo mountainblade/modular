@@ -6,6 +6,7 @@ import gnu.trove.set.hash.THashSet;
 import lombok.Getter;
 import lombok.extern.java.Log;
 import net.mountainblade.modular.*;
+import net.mountainblade.modular.annotations.Implementation;
 import net.mountainblade.modular.annotations.Shutdown;
 import net.mountainblade.modular.impl.location.ClassLocation;
 import net.mountainblade.modular.impl.location.ClasspathLocation;
@@ -66,6 +67,21 @@ public final class ModuleManagerImpl implements ModuleManager {
         // Add destroyable objects for our shutdown
         destroyables.add(registry);
         destroyables.add(loader);
+    }
+
+    @Override
+    public void provide(Module module) {
+        if (module == null) {
+            log.warning("Provided with null instance, did not add to registry");
+            return;
+        }
+
+        // Get class entry and implementation annotation to do a "quick" register call
+        ModuleLoader.ClassEntry entry = loader.getClassEntry(module.getClass());
+        Implementation annotation = entry.getAnnotation();
+
+        ModuleInformationImpl information = new ModuleInformationImpl(annotation.version(), annotation.authors());
+        loader.registerEntry(entry, module, information, registry.createEntry(entry.getModule(), information));
     }
 
     @Override
@@ -172,8 +188,7 @@ public final class ModuleManagerImpl implements ModuleManager {
         // Send shut down signal to modules
         for (Module module : registry.getModules()) {
             try {
-                Annotations.callMethodWithAnnotation(module, Shutdown.class, 0, new Class[]{ModuleManager.class},
-                        this);
+                Annotations.call(module, Shutdown.class, 0, new Class[]{ModuleManager.class}, this);
 
             } catch (IllegalAccessException | InvocationTargetException e) {
                 log.log(Level.WARNING, "Could not invoke shutdown method on module: " + module, e);

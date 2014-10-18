@@ -36,7 +36,7 @@ public class Example2ModuleImpl implements Example2Module {
     }
 
     @Override
-    public int calculateRandomNumber() {
+    public int getNumber() {
         return new Random().nextInt();
     }
 

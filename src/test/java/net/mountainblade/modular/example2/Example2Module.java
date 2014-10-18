@@ -10,6 +10,6 @@ import net.mountainblade.modular.Module;
  */
 public interface Example2Module extends Module {
 
-    int calculateRandomNumber();
+    int getNumber();
 
 }

@@ -8,9 +8,9 @@ import java.util.Arrays;
 
 class Annotations {
 
-    public static <T extends Annotation> Object callMethodWithAnnotation(Object object, Class<T> annotation,
-                                                                         int required, Class<?>[] argTypes,
-                                                                         Object... args)
+    public static <T extends Annotation> Object call(Object object, Class<T> annotation,
+                                                     int required, Class<?>[] argTypes,
+                                                     Object... args)
             throws InvocationTargetException, IllegalAccessException {
 
         for (Method method : object.getClass().getDeclaredMethods()) {

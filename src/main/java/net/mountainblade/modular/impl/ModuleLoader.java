@@ -31,7 +31,6 @@ import java.util.regex.Pattern;
  * @author spaceemotion
  * @version 1.0
  */
-// TODO check for overloading of modules (two implementations are not allowed)
 @Log
 class ModuleLoader implements Destroyable {
     private final ClassWorld classWorld;
@@ -46,14 +45,20 @@ class ModuleLoader implements Destroyable {
         this.classWorld = classWorld;
         this.registry = registry;
 
-        this.injector = new Injector(registry);
-
-        this.classCache = new THashMap<>();
-        this.invalidCache = new THashSet<>();
+        injector = new Injector(registry);
+        classCache = new THashMap<>();
+        invalidCache = new THashSet<>();
     }
 
 
     public Module loadModule(ModuleManager moduleManager, ClassEntry classEntry) {
+        // Try to get "from cache" first. We do not allow two modules be activated at the same time, so lets use that
+        Module module = registry.getModule(classEntry.getImplementation());
+        if (module != null) {
+            return module;
+        }
+
+        // Seems like we haven't loaded that module before, so let's get started
         Implementation annotation = classEntry.getAnnotation();
 
         ModuleInformationImpl information = new ModuleInformationImpl(annotation.version(), annotation.authors());
@@ -64,7 +69,7 @@ class ModuleLoader implements Destroyable {
             Constructor<? extends Module> constructor = classEntry.getImplementation().getDeclaredConstructor();
             constructor.setAccessible(true);
 
-            Module module = constructor.newInstance();
+            module = constructor.newInstance();
 
             // Set to loading
             information.setState(ModuleState.LOADING);
@@ -73,15 +78,10 @@ class ModuleLoader implements Destroyable {
             injector.inject(moduleEntry, module);
 
             // Set to loaded
-            Annotations.callMethodWithAnnotation(module, Initialize.class, 0, new Class[]{ModuleManager.class},
-                    moduleManager);
+            Annotations.call(module, Initialize.class, 0, new Class[]{ModuleManager.class}, moduleManager);
 
             // Set to ready and add to registry, but also add the instance in "ghost mode"
-            information.setState(ModuleState.READY);
-            moduleEntry.setModule(module);
-
-            registry.addModule(classEntry.getModule(), moduleEntry, false);
-            registry.addModule(classEntry.getImplementation(), moduleEntry, true);
+            registerEntry(classEntry, module, information, moduleEntry);
 
             return module;
 
@@ -96,6 +96,15 @@ class ModuleLoader implements Destroyable {
         }
 
         return null;
+    }
+
+    public void registerEntry(ClassEntry classEntry, Module module, ModuleInformationImpl information,
+                              ModuleRegistry.Entry moduleEntry) {
+        information.setState(ModuleState.READY);
+        moduleEntry.setModule(module);
+
+        registry.addModule(classEntry.getModule(), moduleEntry, false);
+        registry.addModule(classEntry.getImplementation(), moduleEntry, true);
     }
 
     public Class<?> loadClass(ClassLocation location, String className) throws ClassNotFoundException {

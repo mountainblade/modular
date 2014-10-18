@@ -14,6 +14,13 @@ import java.util.Collection;
 public interface ModuleManager extends Module {
 
     /**
+     * Provide a module.
+     *
+     * @param module the module
+     */
+    void provide(Module module);
+
+    /**
      * Load modules from a URI.
      *
      * @param uri    The URI to load the modules from
