@@ -29,7 +29,7 @@ import java.util.logging.Level;
  * @version 1.0
  */
 @Log
-public final class ModuleManagerImpl implements ModuleManager {
+public final class DefaultModuleManager implements ModuleManager {
     /** A collection of all destroyable objects that get wiped once the manager shuts down */
     private final Collection<Destroyable> destroyables;
 
@@ -39,7 +39,7 @@ public final class ModuleManagerImpl implements ModuleManager {
     /** The module loader that loads modules and class paths */
     private final ModuleLoader loader;
 
-    /**  */
+    /** A list of all class resolvers, can be accessed to add support for new implementations */
     @Getter
     private final Collection<ClassResolver> locators;
 
@@ -47,7 +47,7 @@ public final class ModuleManagerImpl implements ModuleManager {
     private final JarCache jarCache;
 
 
-    public ModuleManagerImpl() {
+    public DefaultModuleManager() {
         destroyables = new LinkedList<>();
 
         // Stuff we need
@@ -71,21 +71,15 @@ public final class ModuleManagerImpl implements ModuleManager {
 
     @Override
     public void provideSimple(Module module) {
-        if (module == null) {
-            log.warning("Provided with null instance, will not add to registry");
-            return;
-        }
-
-        // Get class entry and implementation annotation to do a "quick" register call
-        ModuleLoader.ClassEntry entry = loader.getClassEntry(module.getClass());
-        Implementation annotation = entry.getAnnotation();
-
-        ModuleInformationImpl information = new ModuleInformationImpl(annotation.version(), annotation.authors());
-        loader.registerEntry(entry, module, information, registry.createEntry(entry.getModule(), information));
+        provide(module, false);
     }
 
     @Override
     public void provide(Module module) {
+        provide(module, true);
+    }
+
+    private void provide(Module module, boolean inject) {
         if (module == null) {
             log.warning("Provided with null instance, will not add to registry");
             return;
@@ -99,8 +93,12 @@ public final class ModuleManagerImpl implements ModuleManager {
         ModuleInformationImpl information = new ModuleInformationImpl(annotation.version(), annotation.authors());
         ModuleRegistry.Entry moduleEntry = registry.createEntry(entry.getModule(), information);
 
-        // Inject dependencies and register module
-        loader.injectAndInitialize(this, module, information, moduleEntry);
+        // Inject dependencies if specified
+        if (inject) {
+            loader.injectAndInitialize(this, module, information, moduleEntry);
+        }
+
+        // Register module
         loader.registerEntry(entry, module, information, moduleEntry);
     }
 
@@ -189,7 +187,7 @@ public final class ModuleManagerImpl implements ModuleManager {
     }
 
     @Override
-    public final <M extends Module> Optional<M> getModule(Class<M> module) {
+    public <M extends Module> Optional<M> getModule(Class<M> module) {
         return Optional.fromNullable(registry.getModule(module));
     }
 

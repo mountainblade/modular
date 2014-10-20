@@ -1,7 +1,16 @@
 package net.mountainblade.modular.impl;
 
-interface Destroyable {
+/**
+ * Represents a destroyable object.
+ *
+ * @author spaceemotion
+ * @version 1.0
+ */
+public abstract class Destroyable {
 
-    void destroy();
+    /**
+     * "Destroys" the object by clearing memory (e.g. empty out lists and maps).
+     */
+    protected abstract void destroy();
 
 }

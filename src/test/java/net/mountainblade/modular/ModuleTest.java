@@ -4,7 +4,7 @@ import com.google.common.base.Stopwatch;
 import net.mountainblade.modular.example.ExampleModule;
 import net.mountainblade.modular.example2.Example2Module;
 import net.mountainblade.modular.example2.Example2ModuleImpl;
-import net.mountainblade.modular.impl.ModuleManagerImpl;
+import net.mountainblade.modular.impl.DefaultModuleManager;
 import net.mountainblade.modular.junit.Repeat;
 import net.mountainblade.modular.junit.RepeatRule;
 import org.junit.Assert;
@@ -35,7 +35,7 @@ public class ModuleTest {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
         // Create new manager
-        ModuleManager manager = new ModuleManagerImpl();
+        ModuleManager manager = new DefaultModuleManager();
 
         // Load modules from our current package and "below"
         Collection<Module> modules = manager.loadModules(UriHelper.nearAndBelow(ModuleManager.class));
@@ -75,7 +75,7 @@ public class ModuleTest {
         }
 
         // Check if we can have multiple instances running
-        ModuleManager manager2 = new ModuleManagerImpl();
+        ModuleManager manager2 = new DefaultModuleManager();
         manager2.provideSimple(manager.getModule(Example2Module.class).orNull());
         Assert.assertEquals(2, manager2.loadModules(UriHelper.of(ExampleModule.class)).size());
 

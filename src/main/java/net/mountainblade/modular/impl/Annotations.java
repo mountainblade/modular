@@ -6,7 +6,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 
-class Annotations {
+public class Annotations {
 
     public static <T extends Annotation> Object call(Object object, Class<T> annotation,
                                                      int required, Class<?>[] argTypes,

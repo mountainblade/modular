@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
  * @version 1.0
  */
 @Log
-class ModuleLoader implements Destroyable {
+class ModuleLoader extends Destroyable {
     private final ClassWorld classWorld;
     private final ModuleRegistry registry;
     private final Injector injector;

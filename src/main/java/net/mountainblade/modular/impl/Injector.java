@@ -20,8 +20,9 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 @Log
-class Injector implements Destroyable {
+public final class Injector extends Destroyable {
     private final Map<Class<? extends Module>, Collection<Entry>> cache;
+    private final Collection<RegistryEntry> supports;
 
     private final ModuleRegistry registry;
 
@@ -29,7 +30,34 @@ class Injector implements Destroyable {
     Injector(ModuleRegistry registry) {
         this.registry = registry;
 
+        this.supports = new LinkedList<>();
         this.cache = new ConcurrentHashMap<>();
+
+        addSupport(new EntryConstructor() {
+            @Override
+            public Entry construct(Inject annotation, Class<? extends Module> module, Field field) {
+                return new LoggerEntry(annotation, module, field);
+            }
+        }, Logger.class, true);
+
+        addSupport(new EntryConstructor() {
+            @Override
+            public Entry construct(Inject annotation, Class<? extends Module> module, Field field) {
+                return new InformationEntry(annotation, module, field);
+            }
+        }, ModuleInformation.class, true);
+
+        addSupport(new EntryConstructor() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Entry construct(Inject annotation, Class<? extends Module> module, Field field) {
+                return new ModuleEntry(annotation, module, field, (Class<? extends Module>) field.getType());
+            }
+        }, Module.class, false);
+    }
+
+    public void addSupport(EntryConstructor entry, Class classToMatch, boolean exactMatch) {
+        supports.add(new RegistryEntry(entry, classToMatch, exactMatch));
     }
 
     @SuppressWarnings("unchecked")
@@ -58,18 +86,24 @@ class Injector implements Destroyable {
                         throw new InjectFailedException("Cannot inject field with itself (Why would you do that?)");
                     }
 
-                    if (Logger.class.equals(fieldType)) {
-                        entries.add(new LoggerEntry(annotation, implementationClass, field));
+                    // Loop through our supports
+                    boolean added = false;
 
-                    } else if (ModuleInformation.class.equals(fieldType)) {
-                        entries.add(new InformationEntry(annotation, implementationClass, field));
+                    for (RegistryEntry support : supports) {
+                        // Check if we got a match
+                        if (!(support.exactMatch ? support.classEntry.equals(fieldType) :
+                                                        support.classEntry.isAssignableFrom(fieldType))) {
+                            continue;
+                        }
 
-                    } else if (Module.class.isAssignableFrom(fieldType)) {
-                        // Our to normal module injection
-                        entries.add(new ModuleEntry(annotation, implementationClass, field,
-                                (Class<? extends Module>) fieldType));
+                        // We found an injector, let's use that
+                        entries.add(support.constructor.construct(annotation, implementationClass, field));
+                        added = true;
+                        break;
+                    }
 
-                    } else {
+                    // Check if we processed the field correctly, if not throw an error
+                    if (!added) {
                         throw new InjectFailedException("Dependency is not a module or special type: " + fieldType);
                     }
 
@@ -102,10 +136,27 @@ class Injector implements Destroyable {
     }
 
     @Override
-    public void destroy() {
+    protected void destroy() {
         cache.clear();
     }
 
+
+    private static class RegistryEntry {
+        private final EntryConstructor constructor;
+        private final Class classEntry;
+        private final boolean exactMatch;
+
+
+        private RegistryEntry(EntryConstructor constructor, Class classEntry, boolean exactMatch) {
+            this.constructor = constructor;
+            this.exactMatch = exactMatch;
+            this.classEntry = classEntry;
+        }
+    }
+
+    public interface EntryConstructor {
+        Entry construct(Inject annotation, Class<? extends Module> module, Field field);
+    }
 
     public abstract class Entry {
         private final String type;
@@ -135,7 +186,7 @@ class Injector implements Destroyable {
             return field;
         }
 
-        abstract boolean apply(ModuleRegistry.Entry moduleEntry, Module module);
+        protected abstract boolean apply(ModuleRegistry.Entry moduleEntry, Module module);
 
         protected boolean injectField(Module module, Object object) {
             if (object != null) {
@@ -162,7 +213,7 @@ class Injector implements Destroyable {
         }
 
         @Override
-        boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
+        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
             Logger logger = Logger.getLogger(module.getClass().getName());
             moduleEntry.setLogger(logger);
 
@@ -178,7 +229,7 @@ class Injector implements Destroyable {
         }
 
         @Override
-        boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
+        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
             return injectField(module, moduleEntry.getInformation());
         }
 
@@ -189,7 +240,7 @@ class Injector implements Destroyable {
 
 
         protected ModuleEntry(Inject annotation, Class<? extends Module> module, Field field,
-                              Class<? extends Module> dependency) throws InjectFailedException {
+                              Class<? extends Module> dependency) {
             super("module dependency", annotation, module, field);
 
             this.dependency = dependency;
@@ -201,7 +252,7 @@ class Injector implements Destroyable {
 
         @Override
         @SuppressWarnings("unchecked")
-        boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
+        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
             Class<?> fieldType = getField().getType();
 
             if (fieldType.equals(Module.class)) {

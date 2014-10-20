@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  * @author spaceemotion
  * @version 1.0
  */
-final class ModuleRegistry implements Destroyable {
+final class ModuleRegistry extends Destroyable {
     private final Map<Class<? extends Module>, Entry> registry;
     private final Collection<Module> modules;
 

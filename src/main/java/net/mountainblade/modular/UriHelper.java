@@ -28,8 +28,16 @@ public final class UriHelper {
         return of(aClass.getCanonicalName());
     }
 
+    public static URI of(Package pkg) {
+        return of(pkg.getName() + ".*");
+    }
+
     public static URI nearAndBelow(Class aClass) {
         return of(aClass.getPackage().getName() + ".**");
+    }
+
+    public static URI nearAndBelow(Package pkg) {
+        return of(pkg.getName() + ".**");
     }
 
     public static boolean matchesScheme(URI uri, String scheme) {
