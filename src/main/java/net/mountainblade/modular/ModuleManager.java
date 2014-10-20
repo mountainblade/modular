@@ -22,7 +22,7 @@ public interface ModuleManager extends Module {
     void provideSimple(Module module);
 
     /**
-     * Stored the given module instance to the registry, but also executes all injection magic and calls the usual
+     * Stored the given module instance in the registry, but also executes all injection magic and calls the usual
      * methods.
      *
      * @param module the module

@@ -32,20 +32,24 @@ import java.util.regex.Pattern;
  * @version 1.0
  */
 @Log
-class ModuleLoader extends Destroyable {
+public final class ModuleLoader extends Destroyable {
     private final ClassWorld classWorld;
     private final ModuleRegistry registry;
     private final Injector injector;
+
+    /** A cache for classes inside JAR containers */
+    private final JarCache jarCache;
 
     private final Map<Class<?>, ClassEntry> classCache;
     private final Set<Class<?>> invalidCache;
 
 
-    public ModuleLoader(ClassWorld classWorld, ModuleRegistry registry) {
+    public ModuleLoader(ClassWorld classWorld, ModuleRegistry registry, Injector injector) {
         this.classWorld = classWorld;
         this.registry = registry;
+        this.injector = injector;
 
-        injector = new Injector(registry);
+        jarCache = new JarCache();
         classCache = new THashMap<>();
         invalidCache = new THashSet<>();
     }
@@ -193,11 +197,11 @@ class ModuleLoader extends Destroyable {
     }
 
     @SuppressWarnings("unchecked")
-    Collection<ClassEntry> getCandidatesWithPattern(Pattern regex, Collection<ClassLocation> located, JarCache cache) {
+    Collection<ClassEntry> getCandidatesWithPattern(Pattern regex, Collection<ClassLocation> located) {
         Collection<ClassEntry> moduleClasses = new LinkedList<>();
 
         for (ClassLocation location : located) {
-            Collection<String> classNames = findModulesIn(cache, location);
+            Collection<String> classNames = findModulesIn(location);
 
             // Check our possible modules
             for (String className : classNames) {
@@ -259,14 +263,14 @@ class ModuleLoader extends Destroyable {
         return moduleClass;
     }
 
-    private Collection<String> findModulesIn(JarCache cache, ClassLocation location) {
+    private Collection<String> findModulesIn(ClassLocation location) {
         String canonicalName = Module.class.getCanonicalName();
 
         LinkedList<String> subClasses = new LinkedList<>();
         JarCache.Entry cacheEntry = null;
 
         if (location instanceof JarClassLocation) {
-            cacheEntry = cache.getEntry(location.getUri());
+            cacheEntry = jarCache.getEntry(location.getUri());
         }
 
         try {

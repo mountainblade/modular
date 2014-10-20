@@ -2,7 +2,8 @@ package net.mountainblade.modular.impl;
 
 import com.google.common.base.Optional;
 import gnu.trove.map.hash.THashMap;
-import gnu.trove.set.hash.THashSet;
+import gnu.trove.set.hash.TLinkedHashSet;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.java.Log;
 import net.mountainblade.modular.*;
@@ -29,22 +30,27 @@ import java.util.logging.Level;
  * @version 1.0
  */
 @Log
-public final class DefaultModuleManager implements ModuleManager {
+public class DefaultModuleManager implements ModuleManager {
     /** A collection of all destroyable objects that get wiped once the manager shuts down */
     private final Collection<Destroyable> destroyables;
 
+    @Getter(AccessLevel.PROTECTED)
+    private final ClassWorld classWorld;
+
     /** The module registry that holds all the instances */
+    @Getter(AccessLevel.PROTECTED)
     private final ModuleRegistry registry;
 
+    @Getter
+    private final Injector injector;
+
     /** The module loader that loads modules and class paths */
+    @Getter(AccessLevel.PROTECTED)
     private final ModuleLoader loader;
 
     /** A list of all class resolvers, can be accessed to add support for new implementations */
     @Getter
     private final Collection<ClassResolver> locators;
-
-    private final ClassWorld classWorld;
-    private final JarCache jarCache;
 
 
     public DefaultModuleManager() {
@@ -52,11 +58,10 @@ public final class DefaultModuleManager implements ModuleManager {
 
         // Stuff we need
         classWorld = new ClassWorld();
-
         registry   = new ModuleRegistry();
-        loader     = new ModuleLoader(classWorld, registry);
-        locators   = new THashSet<>();
-        jarCache   = new JarCache();
+        injector   = new Injector(registry);
+        loader     = new ModuleLoader(classWorld, registry, injector);
+        locators   = new TLinkedHashSet<>();
 
         // Add defaults
         getLocators().add(new ClasspathResolver());
@@ -71,15 +76,15 @@ public final class DefaultModuleManager implements ModuleManager {
 
     @Override
     public void provideSimple(Module module) {
-        provide(module, false);
+        provide(module, false, registry, loader);
     }
 
     @Override
     public void provide(Module module) {
-        provide(module, true);
+        provide(module, true, registry, loader);
     }
 
-    private void provide(Module module, boolean inject) {
+    protected void provide(Module module, boolean inject, ModuleRegistry registry, ModuleLoader loader) {
         if (module == null) {
             log.warning("Provided with null instance, will not add to registry");
             return;
@@ -104,6 +109,10 @@ public final class DefaultModuleManager implements ModuleManager {
 
     @Override
     public Collection<Module> loadModules(URI uri) {
+        return loadModules(uri, loader);
+    }
+
+    protected Collection<Module> loadModules(URI uri, ModuleLoader loader) {
         // Locate stuff from URI - using different providers (class pat, file, ...)
         Collection<ClassLocation> located = new LinkedList<>();
 
@@ -121,7 +130,7 @@ public final class DefaultModuleManager implements ModuleManager {
 
         // Collect a bunch of classes that are Modules, plus the interface they're implementing
         Collection<ModuleLoader.ClassEntry> candidates = loader.getCandidatesWithPattern(
-                (UriHelper.everything().equals(uri)) ? null : UriHelper.createPattern(uri), located, jarCache);
+                (UriHelper.everything().equals(uri)) ? null : UriHelper.createPattern(uri), located);
 
         // Prepare topological sort so we don't have trouble with dependencies
         Map<ModuleLoader.ClassEntry, TopologicalSortedList.Node<ModuleLoader.ClassEntry>> nodes = new THashMap<>();
@@ -203,7 +212,16 @@ public final class DefaultModuleManager implements ModuleManager {
 
     @Override
     public void shutdown() {
-        // Send shut down signal to modules
+        // Send shut down signal to all registered modules
+        shutdown(registry, loader);
+
+        // And destroy what we can
+        for (Destroyable destroyable : destroyables) {
+            destroyable.destroy();
+        }
+    }
+
+    protected void shutdown(ModuleRegistry registry, ModuleLoader loader) {
         for (Module module : registry.getModules()) {
             try {
                 Annotations.call(module, Shutdown.class, 0, new Class[]{ModuleManager.class}, this);
@@ -221,15 +239,11 @@ public final class DefaultModuleManager implements ModuleManager {
                 if (information instanceof ModuleInformationImpl) {
                     ((ModuleInformationImpl) information).setState(ModuleState.SHUTDOWN);
                 }
+
                 continue;
             }
 
             log.warning("Unable to set state to shut down: Could not find entry for module: " + module);
-        }
-
-        // And destroy what we can
-        for (Destroyable destroyable : destroyables) {
-            destroyable.destroy();
         }
     }
 

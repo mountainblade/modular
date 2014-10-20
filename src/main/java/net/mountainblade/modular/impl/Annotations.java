@@ -6,8 +6,27 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 
+/**
+ * Represents a helper for Annotations.
+ *
+ * @author spaceemotion
+ * @version 1.0
+ */
 public class Annotations {
 
+    /**
+     * Calls a method with a specific annotation and parameters.
+     *
+     * @param <T>        The annotation type
+     * @param object     The object
+     * @param annotation The annotation class
+     * @param required   The number of required parameters (at least)
+     * @param argTypes   The parameter types
+     * @param args       The parameter objects
+     * @return An object that the method might return
+     * @throws InvocationTargetException The invocation target exception
+     * @throws IllegalAccessException The illegal access exception
+     */
     public static <T extends Annotation> Object call(Object object, Class<T> annotation,
                                                      int required, Class<?>[] argTypes,
                                                      Object... args)

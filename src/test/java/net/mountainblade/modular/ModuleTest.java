@@ -1,10 +1,12 @@
 package net.mountainblade.modular;
 
 import com.google.common.base.Stopwatch;
-import net.mountainblade.modular.example.ExampleModule;
-import net.mountainblade.modular.example2.Example2Module;
-import net.mountainblade.modular.example2.Example2ModuleImpl;
+import net.mountainblade.modular.annotations.*;
+import net.mountainblade.modular.examples.Example2Module;
+import net.mountainblade.modular.examples.Example2ModuleImpl;
+import net.mountainblade.modular.examples.ExampleModule;
 import net.mountainblade.modular.impl.DefaultModuleManager;
+import net.mountainblade.modular.impl.HierarchicModuleManager;
 import net.mountainblade.modular.junit.Repeat;
 import net.mountainblade.modular.junit.RepeatRule;
 import org.junit.Assert;
@@ -13,9 +15,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Represents the ModuleTest.
@@ -32,13 +36,14 @@ public class ModuleTest {
     @Test
     @Repeat(3) // Repeat because the topological sort is kind of random
     public void testModules() throws Exception {
+        URI exampleUri = UriHelper.of(ExampleModule.class.getPackage());
         Stopwatch stopwatch = Stopwatch.createStarted();
 
         // Create new manager
-        ModuleManager manager = new DefaultModuleManager();
+        DefaultModuleManager manager = new DefaultModuleManager();
 
         // Load modules from our current package and "below"
-        Collection<Module> modules = manager.loadModules(UriHelper.nearAndBelow(ModuleManager.class));
+        Collection<Module> modules = manager.loadModules(exampleUri);
 
         // Stop the clock
         stopwatch.stop();
@@ -59,7 +64,7 @@ public class ModuleTest {
         System.out.println("Random number of the moment: " + manager.getModule(Example2Module.class).get().getNumber());
 
         // Check if we didn't get any new modules this time (two instances are not allowed)
-        Collection<Module> newModules = manager.loadModules(UriHelper.nearAndBelow(ModuleManager.class));
+        Collection<Module> newModules = manager.loadModules(exampleUri);
         Assert.assertEquals(modules.size(), newModules.size());
 
         Iterator<Module> first = modules.iterator();
@@ -79,9 +84,35 @@ public class ModuleTest {
         manager2.provideSimple(manager.getModule(Example2Module.class).orNull());
         Assert.assertEquals(2, manager2.loadModules(UriHelper.of(ExampleModule.class)).size());
 
-        // And shut down the systems
-        manager.shutdown();
+        // Also check if the hierarchical / inherited management is working
+        HierarchicModuleManager hierarchicManager = new HierarchicModuleManager(manager);
+        hierarchicManager.loadModules(UriHelper.of(Example3Module.class));
+
+        Assert.assertFalse("The parent knows about the children!", manager.getModule(Example3Module.class).isPresent());
+
+        // And shut down the systems (hierarchic also shuts down the normal one)
+        hierarchicManager.shutdown(true);
         manager2.shutdown();
+    }
+
+
+    /**
+     * The third example module.
+     *
+     * @author spaceemotion
+     * @version 1.0
+     */
+    @Implementation
+    public static class Example3Module implements Module {
+        @Inject
+        private Logger logger;
+
+
+        @Initialize
+        private void init() {
+            logger.info("I have been loaded inside an inherited manager, the parent does not know about me!");
+        }
+
     }
 
 }

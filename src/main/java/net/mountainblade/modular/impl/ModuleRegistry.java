@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  * @author spaceemotion
  * @version 1.0
  */
-final class ModuleRegistry extends Destroyable {
+public final class ModuleRegistry extends Destroyable {
     private final Map<Class<? extends Module>, Entry> registry;
     private final Collection<Module> modules;
 
@@ -74,7 +74,7 @@ final class ModuleRegistry extends Destroyable {
     }
 
     @Override
-    public void destroy() {
+    protected void destroy() {
         registry.clear();
         modules.clear();
     }
@@ -84,7 +84,7 @@ final class ModuleRegistry extends Destroyable {
     @Getter
     @Setter(AccessLevel.PACKAGE)
     @EqualsAndHashCode
-    static class Entry {
+    public static class Entry {
         private final ModuleInformation information;
         private Module module;
         private Logger logger;

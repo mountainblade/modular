@@ -1,12 +1,8 @@
-package net.mountainblade.modular.example;
+package net.mountainblade.modular.examples;
 
 import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleManager;
-import net.mountainblade.modular.annotations.Implementation;
-import net.mountainblade.modular.annotations.Initialize;
-import net.mountainblade.modular.annotations.Inject;
-import net.mountainblade.modular.annotations.Shutdown;
-import net.mountainblade.modular.example2.Example2Module;
+import net.mountainblade.modular.annotations.*;
 
 /**
  * Represents the ExampleModule.

@@ -1,4 +1,4 @@
-package net.mountainblade.modular.example2;
+package net.mountainblade.modular.examples;
 
 import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.ModuleManager;

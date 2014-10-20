@@ -1,9 +1,9 @@
-package net.mountainblade.modular.example2;
+package net.mountainblade.modular.examples;
 
 import net.mountainblade.modular.Module;
 
 /**
- * Represents the Example2Module.
+ * Represents the second example module (interface only).
  *
  * @author spaceemotion
  * @version 1.0
