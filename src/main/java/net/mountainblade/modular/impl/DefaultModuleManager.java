@@ -75,19 +75,19 @@ public class DefaultModuleManager implements ModuleManager {
     }
 
     @Override
-    public void provideSimple(Module module) {
-        provide(module, false, registry, loader);
+    public <T extends Module> T provideSimple(T module) {
+        return provide(module, false, registry, loader);
     }
 
     @Override
-    public void provide(Module module) {
-        provide(module, true, registry, loader);
+    public <T extends Module> T provide(T module) {
+        return provide(module, true, registry, loader);
     }
 
-    protected void provide(Module module, boolean inject, ModuleRegistry registry, ModuleLoader loader) {
+    protected <T extends Module> T provide(T module, boolean inject, ModuleRegistry registry, ModuleLoader loader) {
         if (module == null) {
             log.warning("Provided with null instance, will not add to registry");
-            return;
+            return null;
         }
 
         // Get class entry and implementation annotation
@@ -105,6 +105,8 @@ public class DefaultModuleManager implements ModuleManager {
 
         // Register module
         loader.registerEntry(entry, module, information, moduleEntry);
+
+        return module;
     }
 
     @Override

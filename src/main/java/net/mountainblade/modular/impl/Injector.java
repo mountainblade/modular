@@ -158,7 +158,7 @@ public final class Injector extends Destroyable {
         Entry construct(Inject annotation, Class<? extends Module> module, Field field);
     }
 
-    public abstract class Entry {
+    public static abstract class Entry {
         private final String type;
 
         private final Class<? extends Module> module;

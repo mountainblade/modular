@@ -37,13 +37,13 @@ public class HierarchicModuleManager implements ModuleManager {
     }
 
     @Override
-    public void provideSimple(Module module) {
-        parent.provide(module, false, registry, loader);
+    public <T extends Module> T provideSimple(T module) {
+        return parent.provide(module, false, registry, loader);
     }
 
     @Override
-    public void provide(Module module) {
-        parent.provide(module, true, registry, loader);
+    public <T extends Module> T provide(T module) {
+        return parent.provide(module, true, registry, loader);
     }
 
     @Override

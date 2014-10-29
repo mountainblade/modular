@@ -43,7 +43,7 @@ public final class ModuleRegistry extends Destroyable {
     }
 
     void addGhostModule(Class<? extends Module> moduleClass, Module module, ModuleInformation information) {
-        Entry entry = new Entry(information);
+        Entry entry = new Entry(information, moduleClass);
         entry.setModule(module);
 
         addModule(moduleClass, entry, true);
@@ -63,7 +63,7 @@ public final class ModuleRegistry extends Destroyable {
             return null;
         }
 
-        Entry entry = new Entry(information);
+        Entry entry = new Entry(information, moduleClass);
         registry.put(moduleClass, entry);
 
         return entry;
@@ -80,12 +80,13 @@ public final class ModuleRegistry extends Destroyable {
     }
 
 
-    @RequiredArgsConstructor
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     @Getter
     @Setter(AccessLevel.PACKAGE)
     @EqualsAndHashCode
     public static class Entry {
         private final ModuleInformation information;
+        private final Class<? extends Module> moduleClass;
         private Module module;
         private Logger logger;
     }

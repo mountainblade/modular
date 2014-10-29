@@ -19,7 +19,7 @@ public interface ModuleManager extends Module {
      * @param module the module
      * @see #provide(Module)
      */
-    void provideSimple(Module module);
+    <T extends Module> T provideSimple(T module);
 
     /**
      * Stored the given module instance in the registry, but also executes all injection magic and calls the usual
@@ -28,7 +28,7 @@ public interface ModuleManager extends Module {
      * @param module the module
      * @see #provideSimple(Module)
      */
-    void provide(Module module);
+    <T extends Module> T provide(T module);
 
     /**
      * Load modules from a URI.
