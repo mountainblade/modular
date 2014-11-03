@@ -6,6 +6,7 @@ import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.annotations.Inject;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
@@ -60,56 +61,22 @@ public final class Injector extends Destroyable {
         supports.add(new RegistryEntry(entry, classToMatch, exactMatch));
     }
 
-    @SuppressWarnings("unchecked")
+
     public Collection<Entry> discover(Class<? extends Module> implementationClass) {
         Collection<Entry> entries = cache.get(implementationClass);
 
         if (entries == null) {
             entries = new LinkedList<>();
 
-            // Loop through the fields
-            for (Field field : implementationClass.getDeclaredFields()) {
-                Inject annotation = field.getAnnotation(Inject.class);
-                if (annotation == null) {
-                    continue;
-                }
+            // Discover normal class fields
+            discover(implementationClass, entries, implementationClass.getDeclaredFields());
 
-                // Fetch dependency and do some checks beforehand
-                Class<?> fieldType = field.getType();
+            // Also discover fields from superclass
+            Class superClass = implementationClass.getSuperclass();
 
-                try {
-                    if (fieldType.equals(Module.class)) {
-                        throw new InjectFailedException("Cannot inject field with raw Material type");
-                    }
-
-                    if (fieldType.equals(implementationClass.getClass())) {
-                        throw new InjectFailedException("Cannot inject field with itself (Why would you do that?)");
-                    }
-
-                    // Loop through our supports
-                    boolean added = false;
-
-                    for (RegistryEntry support : supports) {
-                        // Check if we got a match
-                        if (!(support.exactMatch ? support.classEntry.equals(fieldType) :
-                                                        support.classEntry.isAssignableFrom(fieldType))) {
-                            continue;
-                        }
-
-                        // We found an injector, let's use that
-                        entries.add(support.constructor.construct(annotation, implementationClass, field));
-                        added = true;
-                        break;
-                    }
-
-                    // Check if we processed the field correctly, if not throw an error
-                    if (!added) {
-                        throw new InjectFailedException("Dependency is not a module or special type: " + fieldType);
-                    }
-
-                } catch (InjectFailedException e) {
-                    log.log(Level.WARNING, "Error with dependency entry for implementation, injects will fail", e);
-                }
+            while (superClass != null && !superClass.equals(Class.class)) {
+                discover(implementationClass, entries, superClass.getDeclaredFields());
+                superClass = superClass.getSuperclass();
             }
 
             // Add our entries to the cache
@@ -117,6 +84,59 @@ public final class Injector extends Destroyable {
         }
 
         return entries;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void discover(Class<? extends Module> implementationClass, Collection<Entry> entries, Field[] fields) {
+        // Loop through the fields
+        for (Field field : fields) {
+            // We do not want static fields
+            if (Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+
+            // Check inject annotation
+            Inject annotation = field.getAnnotation(Inject.class);
+            if (annotation == null) {
+                continue;
+            }
+
+            // Fetch dependency and do some checks beforehand
+            Class<?> fieldType = field.getType();
+
+            try {
+                if (fieldType.equals(Module.class)) {
+                    throw new InjectFailedException("Cannot inject field with raw Material type");
+                }
+
+                if (fieldType.equals(implementationClass.getClass())) {
+                    throw new InjectFailedException("Cannot inject field with itself (Why would you do that?)");
+                }
+
+                // Loop through our supports
+                boolean added = false;
+
+                for (RegistryEntry support : supports) {
+                    // Check if we got a match
+                    if (!(support.exactMatch ? support.classEntry.equals(fieldType) :
+                                                    support.classEntry.isAssignableFrom(fieldType))) {
+                        continue;
+                    }
+
+                    // We found an injector, let's use that
+                    entries.add(support.constructor.construct(annotation, implementationClass, field));
+                    added = true;
+                }
+
+                if (!added) {
+                    // We did not process the field correctly, so throw an error
+                    throw new InjectFailedException("Dependency is not a module or special type: " + fieldType);
+                }
+
+            } catch (InjectFailedException e) {
+                log.log(Level.WARNING, "Error with dependency entry for implementation, injects will fail", e);
+            }
+        }
     }
 
     public void inject(ModuleRegistry.Entry moduleEntry, Module implementation) throws InjectFailedException {
