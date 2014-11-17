@@ -2,8 +2,6 @@ package net.mountainblade.modular.impl;
 
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.THashSet;
-import lombok.Data;
-import lombok.extern.java.Log;
 import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleManager;
 import net.mountainblade.modular.ModuleState;
@@ -22,6 +20,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,8 +30,9 @@ import java.util.regex.Pattern;
  * @author spaceemotion
  * @version 1.0
  */
-@Log
 public final class ModuleLoader extends Destroyable {
+    private static final Logger LOG = Logger.getLogger(ModuleLoader.class.getName());
+
     private final ClassWorld classWorld;
     private final ModuleRegistry registry;
     private final Injector injector;
@@ -84,10 +84,10 @@ public final class ModuleLoader extends Destroyable {
             return module;
 
         } catch (NoSuchMethodException e) {
-            log.log(Level.WARNING, "Could not find module constructor", e);
+            LOG.log(Level.WARNING, "Could not find module constructor", e);
 
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            log.log(Level.WARNING, "Could not instantiate module implementation", e);
+            LOG.log(Level.WARNING, "Could not instantiate module implementation", e);
         }
 
         return null;
@@ -106,10 +106,10 @@ public final class ModuleLoader extends Destroyable {
             Annotations.call(module, Initialize.class, 0, new Class[]{ModuleManager.class}, manager);
 
         } catch (InjectFailedException e) {
-            log.log(Level.WARNING, "Could not load module implementation", e);
+            LOG.log(Level.WARNING, "Could not load module implementation", e);
 
         } catch (InvocationTargetException | IllegalAccessException e) {
-            log.log(Level.WARNING, "Could not call initialize method on module implementation", e);
+            LOG.log(Level.WARNING, "Could not call initialize method on module implementation", e);
         }
     }
 
@@ -128,7 +128,7 @@ public final class ModuleLoader extends Destroyable {
                 return classWorld.getRealm(location.getRealm()).loadClass(className);
 
             } catch (ClassNotFoundException | NoSuchRealmException e) {
-                log.log(Level.WARNING, "Could not properly load class from realm: " + location.getUri(), e);
+                LOG.log(Level.WARNING, "Could not properly load class from realm: " + location.getUri(), e);
             }
         }
 
@@ -223,7 +223,7 @@ public final class ModuleLoader extends Destroyable {
                     }
 
                 } catch (ClassNotFoundException e) {
-                    log.log(Level.WARNING, "Could not properly load module candidate", e);
+                    LOG.log(Level.WARNING, "Could not properly load module candidate", e);
                 }
             }
         }
@@ -290,12 +290,12 @@ public final class ModuleLoader extends Destroyable {
                     }
 
                 } catch (ClassNotFoundException e) {
-                    log.log(Level.WARNING, "Could not find class although it should exist: " + className, e);
+                    LOG.log(Level.WARNING, "Could not find class although it should exist: " + className, e);
                 }
             }
 
         } catch (NoSuchRealmException e) {
-            log.log(Level.WARNING, "Could not find realm", e);
+            LOG.log(Level.WARNING, "Could not find realm", e);
         }
 
         if (cacheEntry != null) {
@@ -306,12 +306,62 @@ public final class ModuleLoader extends Destroyable {
     }
 
 
-    @Data
     public final static class ClassEntry {
         private final Class<? extends Module> module;
         private final Class<? extends Module> implementation;
         private final Implementation annotation;
         private final Collection<Injector.Entry> dependencies;
+
+        public ClassEntry(Class<? extends Module> module, Class<? extends Module> implementation,
+                          Implementation annotation, Collection<Injector.Entry> dependencies) {
+            this.module = module;
+            this.implementation = implementation;
+            this.annotation = annotation;
+            this.dependencies = dependencies;
+        }
+
+        public Class<? extends Module> getModule() {
+            return module;
+        }
+
+        public Class<? extends Module> getImplementation() {
+            return implementation;
+        }
+
+        public Implementation getAnnotation() {
+            return annotation;
+        }
+
+        public Collection<Injector.Entry> getDependencies() {
+            return dependencies;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ClassEntry)) return false;
+
+            ClassEntry that = (ClassEntry) o;
+
+            return annotation.equals(that.annotation) && dependencies.equals(that.dependencies) &&
+                    implementation.equals(that.implementation) && module.equals(that.module);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * (31 * (31 * module.hashCode() + implementation.hashCode()) + annotation.hashCode()) +
+                    dependencies.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return "ClassEntry{" +
+                    "module=" + module +
+                    ", implementation=" + implementation +
+                    ", annotation=" + annotation +
+                    ", dependencies=" + dependencies +
+                    '}';
+        }
     }
 
 }

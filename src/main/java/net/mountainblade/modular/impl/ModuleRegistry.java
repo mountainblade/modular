@@ -1,7 +1,6 @@
 package net.mountainblade.modular.impl;
 
 import gnu.trove.set.hash.THashSet;
-import lombok.*;
 import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleInformation;
 
@@ -80,15 +79,70 @@ public final class ModuleRegistry extends Destroyable {
     }
 
 
-    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-    @Getter
-    @Setter(AccessLevel.PACKAGE)
-    @EqualsAndHashCode
-    public static class Entry {
+    public static final class Entry {
         private final ModuleInformation information;
         private final Class<? extends Module> moduleClass;
         private Module module;
         private Logger logger;
+
+
+        private Entry(ModuleInformation information, Class<? extends Module> moduleClass) {
+            this.information = information;
+            this.moduleClass = moduleClass;
+        }
+
+        public ModuleInformation getInformation() {
+            return information;
+        }
+
+        public Class<? extends Module> getModuleClass() {
+            return moduleClass;
+        }
+
+        public Module getModule() {
+            return module;
+        }
+
+        void setModule(Module module) {
+            this.module = module;
+        }
+
+        public Logger getLogger() {
+            return logger;
+        }
+
+        void setLogger(Logger logger) {
+            this.logger = logger;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            Entry entry = (Entry) o;
+
+            return information.equals(entry.information) &&
+                    !(logger != null ? !logger.equals(entry.logger) : entry.logger != null) &&
+                    !(module != null ? !module.equals(entry.module) : entry.module != null) &&
+                    moduleClass.equals(entry.moduleClass);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * (31 * (31 * information.hashCode() + moduleClass.hashCode()) +
+                    (module != null ? module.hashCode() : 0)) + (logger != null ? logger.hashCode() : 0);
+        }
+
+        @Override
+        public String toString() {
+            return "Entry{" +
+                    "information=" + information +
+                    ", moduleClass=" + moduleClass +
+                    ", module=" + module +
+                    '}';
+        }
+
     }
 
 }

@@ -3,10 +3,11 @@ package net.mountainblade.modular.impl;
 import com.google.common.base.Optional;
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.TLinkedHashSet;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.extern.java.Log;
-import net.mountainblade.modular.*;
+import net.mountainblade.modular.Module;
+import net.mountainblade.modular.ModuleInformation;
+import net.mountainblade.modular.ModuleManager;
+import net.mountainblade.modular.ModuleState;
+import net.mountainblade.modular.UriHelper;
 import net.mountainblade.modular.annotations.Implementation;
 import net.mountainblade.modular.annotations.Shutdown;
 import net.mountainblade.modular.impl.location.ClassLocation;
@@ -22,6 +23,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Represents the default implementation of a {@link net.mountainblade.modular.ModuleManager}.
@@ -29,27 +31,23 @@ import java.util.logging.Level;
  * @author spaceemotion
  * @version 1.0
  */
-@Log
 public class DefaultModuleManager implements ModuleManager {
+    private static final Logger LOG = Logger.getLogger(DefaultModuleManager.class.getName());
+
     /** A collection of all destroyable objects that get wiped once the manager shuts down */
     private final Collection<Destroyable> destroyables;
 
-    @Getter(AccessLevel.PROTECTED)
     private final ClassWorld classWorld;
 
     /** The module registry that holds all the instances */
-    @Getter(AccessLevel.PROTECTED)
     private final ModuleRegistry registry;
 
-    @Getter
     private final Injector injector;
 
     /** The module loader that loads modules and class paths */
-    @Getter(AccessLevel.PROTECTED)
     private final ModuleLoader loader;
 
     /** A list of all class resolvers, can be accessed to add support for new implementations */
-    @Getter
     private final Collection<ClassResolver> locators;
 
 
@@ -74,6 +72,26 @@ public class DefaultModuleManager implements ModuleManager {
         destroyables.add(loader);
     }
 
+    protected ClassWorld getClassWorld() {
+        return classWorld;
+    }
+
+    protected ModuleRegistry getRegistry() {
+        return registry;
+    }
+
+    public Injector getInjector() {
+        return injector;
+    }
+
+    protected ModuleLoader getLoader() {
+        return loader;
+    }
+
+    public Collection<ClassResolver> getLocators() {
+        return locators;
+    }
+
     @Override
     public <T extends Module> T provideSimple(T module) {
         return provide(module, false, registry, loader);
@@ -86,7 +104,7 @@ public class DefaultModuleManager implements ModuleManager {
 
     protected <T extends Module> T provide(T module, boolean inject, ModuleRegistry registry, ModuleLoader loader) {
         if (module == null) {
-            log.warning("Provided with null instance, will not add to registry");
+            LOG.warning("Provided with null instance, will not add to registry");
             return null;
         }
 
@@ -166,7 +184,7 @@ public class DefaultModuleManager implements ModuleManager {
                     depNode.isRequiredBefore(node);
 
                 } else {
-                    log.warning("Could not get class entry for dependency: " + dependency);
+                    LOG.warning("Could not get class entry for dependency: " + dependency);
                 }
             }
         }
@@ -178,7 +196,7 @@ public class DefaultModuleManager implements ModuleManager {
             sortedCandidates.sort();
 
         } catch (TopologicalSortedList.CycleException e) {
-            log.log(Level.WARNING, "Error sorting module load order, found dependency cycle", e);
+            LOG.log(Level.WARNING, "Error sorting module load order, found dependency cycle", e);
             return modules;
         }
 
@@ -187,7 +205,7 @@ public class DefaultModuleManager implements ModuleManager {
             Module module = loader.loadModule(this, candidate.getValue());
 
             if (module == null) {
-                log.warning("Could not load modules properly, cancelling loading procedure");
+                LOG.warning("Could not load modules properly, cancelling loading procedure");
                 break;
             }
 
@@ -229,7 +247,7 @@ public class DefaultModuleManager implements ModuleManager {
                 Annotations.call(module, Shutdown.class, 0, new Class[]{ModuleManager.class}, this);
 
             } catch (IllegalAccessException | InvocationTargetException e) {
-                log.log(Level.WARNING, "Could not invoke shutdown method on module: " + module, e);
+                LOG.log(Level.WARNING, "Could not invoke shutdown method on module: " + module, e);
             }
 
             // Set state to shutdown
@@ -245,7 +263,7 @@ public class DefaultModuleManager implements ModuleManager {
                 continue;
             }
 
-            log.warning("Unable to set state to shut down: Could not find entry for module: " + module);
+            LOG.warning("Unable to set state to shut down: Could not find entry for module: " + module);
         }
     }
 

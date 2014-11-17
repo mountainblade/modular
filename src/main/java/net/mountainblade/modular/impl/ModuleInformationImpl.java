@@ -1,6 +1,5 @@
 package net.mountainblade.modular.impl;
 
-import lombok.Setter;
 import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.ModuleState;
 
@@ -14,7 +13,6 @@ class ModuleInformationImpl implements ModuleInformation {
     private final Collection<String> authors;
     private final String version;
 
-    @Setter
     private ModuleState state;
 
 
@@ -38,6 +36,10 @@ class ModuleInformationImpl implements ModuleInformation {
     @Override
     public ModuleState getState() {
         return state;
+    }
+
+    public void setState(ModuleState state) {
+        this.state = state;
     }
 
     @Override

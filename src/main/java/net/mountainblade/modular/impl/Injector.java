@@ -1,6 +1,5 @@
 package net.mountainblade.modular.impl;
 
-import lombok.extern.java.Log;
 import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.annotations.Inject;
@@ -20,8 +19,9 @@ import java.util.logging.Logger;
  * @author spaceemotion
  * @version 1.0
  */
-@Log
 public final class Injector extends Destroyable {
+    private static final Logger LOG = Logger.getLogger(Injector.class.getName());
+
     private final Map<Class<? extends Module>, Collection<Entry>> cache;
     private final Collection<RegistryEntry> supports;
 
@@ -134,7 +134,7 @@ public final class Injector extends Destroyable {
                 }
 
             } catch (InjectFailedException e) {
-                log.log(Level.WARNING, "Error with dependency entry for implementation, injects will fail", e);
+                LOG.log(Level.WARNING, "Error with dependency entry for implementation, injects will fail", e);
             }
         }
     }
@@ -217,7 +217,7 @@ public final class Injector extends Destroyable {
                     return true;
 
                 } catch (IllegalAccessException e) {
-                    log.log(Level.SEVERE, "Could not inject module with " + type, e);
+                    LOG.log(Level.SEVERE, "Could not inject module with " + type, e);
                 }
             }
 
@@ -276,12 +276,12 @@ public final class Injector extends Destroyable {
             Class<?> fieldType = getField().getType();
 
             if (fieldType.equals(Module.class)) {
-                log.log(Level.WARNING, "Cannot inject field with raw Material type");
+                LOG.log(Level.WARNING, "Cannot inject field with raw Material type");
                 return false;
             }
 
             if (fieldType.equals(getModule().getClass())) {
-                log.log(Level.WARNING, "Cannot inject field with itself (Why would you want to do that?)");
+                LOG.log(Level.WARNING, "Cannot inject field with itself (Why would you want to do that?)");
                 return false;
             }
 

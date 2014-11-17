@@ -1,7 +1,6 @@
 package net.mountainblade.modular.impl.resolver;
 
 import com.google.common.base.Splitter;
-import lombok.extern.java.Log;
 import net.mountainblade.modular.UriHelper;
 import net.mountainblade.modular.impl.location.ClasspathLocation;
 
@@ -14,6 +13,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Represents a locator for classes inside our own classpath.
@@ -21,11 +21,10 @@ import java.util.logging.Level;
  * @author spaceemotion
  * @version 1.0
  */
-@Log
 public class ClasspathResolver extends ClassResolver {
+    private static final Logger LOG = Logger.getLogger(ClasspathResolver.class.getName());
     private static final String CLASS_PATH_SEPARATOR = System.getProperty("path.separator");
     private static final String JAVA_CLASS_PATH = System.getProperty("java.class.path");
-
     private static final List<String> CLASSES = Splitter.on(CLASS_PATH_SEPARATOR).splitToList(JAVA_CLASS_PATH);
 
 
@@ -43,7 +42,7 @@ public class ClasspathResolver extends ClassResolver {
                     getUriBlacklist().add(url.toURI());
 
                 } catch (URISyntaxException e) {
-                    log.log(Level.WARNING, "Could not convert URL to URI", e);
+                    LOG.log(Level.WARNING, "Could not convert URL to URI", e);
                 }
             }
         }

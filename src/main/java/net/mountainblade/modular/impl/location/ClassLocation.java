@@ -1,14 +1,13 @@
 package net.mountainblade.modular.impl.location;
 
 import gnu.trove.set.hash.TLinkedHashSet;
-import lombok.Getter;
-import lombok.extern.java.Log;
 
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Collection;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Represents a location (realm) for classes.
@@ -16,14 +15,14 @@ import java.util.logging.Level;
  * @author spaceemotion
  * @version 1.0
  */
-@Log
-@Getter
 public abstract class ClassLocation {
-    protected static final Collection<String> nameBlacklist = new TLinkedHashSet<>();
+    private static final Logger LOG = Logger.getLogger(ClassLocation.class.getName());
+    private static final Collection<String> NAME_BLACKLIST = new TLinkedHashSet<>();
+
     static {
         // Add maven stuff
-        nameBlacklist.add("target.classes");
-        nameBlacklist.add("target.test-classes");
+        NAME_BLACKLIST.add("target.classes");
+        NAME_BLACKLIST.add("target.test-classes");
     }
 
     protected final URI uri;
@@ -40,14 +39,26 @@ public abstract class ClassLocation {
             url = uri.toURL();
 
         } catch (MalformedURLException e) {
-            log.log(Level.WARNING, "Could not convert URI to URL", e);
+            LOG.log(Level.WARNING, "Could not convert URI to URL", e);
         }
+    }
+
+    public URI getUri() {
+        return uri;
+    }
+
+    public String getRealm() {
+        return realm;
+    }
+
+    public URL getUrl() {
+        return url;
     }
 
     public abstract Collection<String> listClassNames();
 
     protected final boolean isBlacklisted(String className) {
-        for (String blackListed : nameBlacklist) {
+        for (String blackListed : NAME_BLACKLIST) {
             if (className.contains(blackListed)) {
                 return true;
             }
@@ -63,7 +74,6 @@ public abstract class ClassLocation {
 
         ClassLocation that = (ClassLocation) o;
         return !(realm != null ? !realm.equals(that.realm) : that.realm != null) && uri.equals(that.uri);
-
     }
 
     @Override

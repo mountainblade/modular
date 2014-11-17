@@ -1,6 +1,5 @@
 package net.mountainblade.modular.impl.resolver;
 
-import lombok.Getter;
 import net.mountainblade.modular.impl.location.ClasspathLocation;
 
 import java.net.URI;
@@ -14,10 +13,7 @@ import java.util.LinkedList;
  * @version 1.0
  */
 public abstract class ClassResolver {
-    @Getter
     private final Collection<URI> uriBlacklist;
-
-    @Getter
     private final Collection<String> nameBlacklist;
 
 
@@ -26,6 +22,13 @@ public abstract class ClassResolver {
         nameBlacklist = new LinkedList<>();
     }
 
+    public Collection<URI> getUriBlacklist() {
+        return uriBlacklist;
+    }
+
+    public Collection<String> getNameBlacklist() {
+        return nameBlacklist;
+    }
 
     public abstract boolean handles(URI uri);
 

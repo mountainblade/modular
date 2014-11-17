@@ -1,7 +1,5 @@
 package net.mountainblade.modular.impl.location;
 
-import lombok.extern.java.Log;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -9,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Represents a location for local classes within our classpath.
@@ -16,8 +15,8 @@ import java.util.logging.Level;
  * @author spaceemotion
  * @version 1.0
  */
-@Log
 public class ClasspathLocation extends ClassLocation {
+    private static final Logger LOG = Logger.getLogger(ClasspathLocation.class.getName());
     private static final String FILE_SUFFIX = ".class";
 
 
@@ -79,7 +78,7 @@ public class ClasspathLocation extends ClassLocation {
                     }
 
                 } catch (IOException e) {
-                    log.log(Level.WARNING, "Could not get canonical path of file: " + file, e);
+                    LOG.log(Level.WARNING, "Could not get canonical path of file: " + file, e);
                 }
 
                 if (file.isDirectory()) {

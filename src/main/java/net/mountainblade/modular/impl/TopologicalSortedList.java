@@ -3,7 +3,6 @@ package net.mountainblade.modular.impl;
 import gnu.trove.list.TLinkableAdapter;
 import gnu.trove.list.linked.TLinkedList;
 import gnu.trove.set.hash.THashSet;
-import lombok.Data;
 
 import java.util.Iterator;
 
@@ -145,10 +144,16 @@ public class TopologicalSortedList<E> extends TLinkedList<TopologicalSortedList.
 
     }
 
-    @Data
+
     protected static class Edge<E> {
         private final Node<E> from;
         private final Node<E> to;
+
+
+        public Edge(Node<E> from, Node<E> to) {
+            this.from = from;
+            this.to = to;
+        }
     }
 
     public static class CycleException extends Exception {
