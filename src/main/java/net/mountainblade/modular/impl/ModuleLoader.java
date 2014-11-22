@@ -42,6 +42,7 @@ public final class ModuleLoader extends Destroyable {
 
     private final Map<Class<?>, ClassEntry> classCache;
     private final Set<Class<?>> invalidCache;
+    private final Set<Class<?>> ignores;
 
 
     public ModuleLoader(ClassWorld classWorld, ModuleRegistry registry, Injector injector) {
@@ -52,8 +53,19 @@ public final class ModuleLoader extends Destroyable {
         jarCache = new JarCache();
         classCache = new THashMap<>();
         invalidCache = new THashSet<>();
+
+        ignores = new THashSet<>();
     }
 
+    /**
+     * Adds the given class to the list of ignored module superclasses / -interfaces.
+     *
+     * @param ignore    The module super-class to ignore during the loading process
+     * @return True if the class could be added, false if not
+     */
+    public boolean ignoreModuleClass(Class<? extends Module> ignore) {
+        return ignores.add(ignore);
+    }
 
     public Module loadModule(ModuleManager moduleManager, ClassEntry classEntry) {
         // Try to get "from cache" first. We do not allow two modules be activated at the same time, so lets use that
@@ -165,6 +177,7 @@ public final class ModuleLoader extends Destroyable {
 
             if (!implementation.module().equals(Implementation.Default.class)) {
                 // The developer already provided the wanted class so we'll gladly use that instead
+                // We also ignore the ignore list - ba dum tss - here, since the dev. explicitly specified it
                 module = implementation.module();
 
             } else {
@@ -233,34 +246,27 @@ public final class ModuleLoader extends Destroyable {
 
     @SuppressWarnings("unchecked")
     private Class<? extends Module> getModuleClassRecursively(Class<?> aClass) {
-        Class<? extends Module> moduleClass = null;
-
         // Let's check interfaces first...
         Class<?>[] interfaces = aClass.getInterfaces();
 
         for (Class<?> anInterface : interfaces) {
-            if (!Module.class.isAssignableFrom(anInterface)) {
+            if (!Module.class.isAssignableFrom(anInterface) || ignores.contains(anInterface)) {
                 continue;
             }
 
             // Seems like we found something
             if (Module.class.equals(anInterface)) {
                 // Use our class since it probably is a direct implementation
-                moduleClass = (Class<? extends Module>) aClass;
-
-            } else {
-                moduleClass = (Class<? extends Module>) anInterface;
+                return (Class<? extends Module>) aClass;
             }
 
-            break;
+            return (Class<? extends Module>) anInterface;
         }
 
         // We still didn't find a proper module class search through our superclasses
-        if (moduleClass == null) {
-            // TODO
-        }
+        // TODO
 
-        return moduleClass;
+        return null;
     }
 
     private Collection<String> findModulesIn(ClassLocation location) {

@@ -89,7 +89,7 @@ public class DefaultModuleManager implements ModuleManager {
         return injector;
     }
 
-    protected ModuleLoader getLoader() {
+    public ModuleLoader getLoader() {
         return loader;
     }
 
