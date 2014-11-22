@@ -3,6 +3,7 @@ package net.mountainblade.modular.impl;
 import com.google.common.base.Optional;
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.TLinkedHashSet;
+import net.mountainblade.modular.Filter;
 import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.ModuleManager;
@@ -20,8 +21,10 @@ import org.codehaus.plexus.classworlds.realm.DuplicateRealmException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,11 +40,13 @@ public class DefaultModuleManager implements ModuleManager {
     /** A collection of all destroyable objects that get wiped once the manager shuts down */
     private final Collection<Destroyable> destroyables;
 
+    /** The classworld instance that contains all the class information, used for better/easier loading */
     private final ClassWorld classWorld;
 
     /** The module registry that holds all the instances */
     private final ModuleRegistry registry;
 
+    /** The automagical injector */
     private final Injector injector;
 
     /** The module loader that loads modules and class paths */
@@ -128,11 +133,11 @@ public class DefaultModuleManager implements ModuleManager {
     }
 
     @Override
-    public Collection<Module> loadModules(URI uri) {
-        return loadModules(uri, loader);
+    public Collection<Module> loadModules(URI uri, Filter... filters) {
+        return loadModules(uri, loader, filters);
     }
 
-    protected Collection<Module> loadModules(URI uri, ModuleLoader loader) {
+    protected Collection<Module> loadModules(URI uri, ModuleLoader loader, Filter... filters) {
         // Locate stuff from URI - using different providers (class pat, file, ...)
         Collection<ClassLocation> located = new LinkedList<>();
 
@@ -152,11 +157,27 @@ public class DefaultModuleManager implements ModuleManager {
         Collection<ModuleLoader.ClassEntry> candidates = loader.getCandidatesWithPattern(
                 (UriHelper.everything().equals(uri)) ? null : UriHelper.createPattern(uri), located);
 
+        // Apply filters - we do the filters first, so in case we don't have any, we don't iterate over all the entries
+        Set<ModuleLoader.ClassEntry> entries = new TLinkedHashSet<>(candidates);
+        Iterator<ModuleLoader.ClassEntry> iterator;
+
+        for (Filter filter : filters) {
+            iterator = entries.iterator();
+
+            while (iterator.hasNext()) {
+                ModuleLoader.ClassEntry classEntry = iterator.next();
+
+                if (!filter.retain(classEntry)) {
+                    iterator.remove();
+                }
+            }
+        }
+
         // Prepare topological sort so we don't have trouble with dependencies
         Map<ModuleLoader.ClassEntry, TopologicalSortedList.Node<ModuleLoader.ClassEntry>> nodes = new THashMap<>();
         TopologicalSortedList<ModuleLoader.ClassEntry> sortedCandidates = new TopologicalSortedList<>();
 
-        for (ModuleLoader.ClassEntry classEntry : candidates) {
+        for (ModuleLoader.ClassEntry classEntry : entries) {
             TopologicalSortedList.Node<ModuleLoader.ClassEntry> node = nodes.get(classEntry);
 
             if (node == null) {
@@ -182,10 +203,10 @@ public class DefaultModuleManager implements ModuleManager {
                     }
 
                     depNode.isRequiredBefore(node);
-
-                } else {
-                    LOG.warning("Could not get class entry for dependency: " + dependency);
+                    continue;
                 }
+
+                LOG.warning("Could not get class entry for dependency: " + dependency);
             }
         }
 

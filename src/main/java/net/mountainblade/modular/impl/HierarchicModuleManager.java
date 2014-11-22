@@ -1,6 +1,7 @@
 package net.mountainblade.modular.impl;
 
 import com.google.common.base.Optional;
+import net.mountainblade.modular.Filter;
 import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.ModuleManager;
@@ -47,8 +48,8 @@ public class HierarchicModuleManager implements ModuleManager {
     }
 
     @Override
-    public Collection<Module> loadModules(URI uri) {
-        return parent.loadModules(uri, loader);
+    public Collection<Module> loadModules(URI uri, Filter... filters) {
+        return parent.loadModules(uri, loader, filters);
     }
 
     @Override

@@ -7,6 +7,7 @@ import net.mountainblade.modular.examples.Example2ModuleImpl;
 import net.mountainblade.modular.examples.ExampleModule;
 import net.mountainblade.modular.impl.DefaultModuleManager;
 import net.mountainblade.modular.impl.HierarchicModuleManager;
+import net.mountainblade.modular.impl.ModuleLoader;
 import net.mountainblade.modular.junit.Repeat;
 import net.mountainblade.modular.junit.RepeatRule;
 import org.junit.Assert;
@@ -15,6 +16,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Iterator;
@@ -95,6 +98,19 @@ public class ModuleTest {
         manager2.shutdown();
     }
 
+    @Test
+    public void testFilter() throws Exception {
+        Collection<Module> modules = new DefaultModuleManager().loadModules(UriHelper.everything(), new Filter() {
+            @Override
+            public boolean retain(ModuleLoader.ClassEntry candidate) {
+                return candidate.getImplementation().isAnnotationPresent(ItsAKeeper.class);
+            }
+        });
+
+        for (Module module : modules) {
+            Assert.assertTrue("The Module is a spy!", module.getClass().equals(Example3Module.class));
+        }
+    }
 
     /**
      * The third example module.
@@ -103,6 +119,7 @@ public class ModuleTest {
      * @version 1.0
      */
     @Implementation
+    @ItsAKeeper
     public static class Example3Module implements Module {
         @Inject
         private Logger logger;
@@ -113,6 +130,11 @@ public class ModuleTest {
             logger.info("I have been loaded inside an inherited manager, the parent does not know about me!");
         }
 
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    public static @interface ItsAKeeper {
+        // yay
     }
 
 }

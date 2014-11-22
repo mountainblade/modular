@@ -10,7 +10,8 @@ import java.lang.annotation.Target;
 /**
  * Represents an annotation that is used to mark implementation of modules.
  *
- * <p>The instantiation happens at runtime, using {@link net.mountainblade.modular.ModuleManager#loadModules(java.net.URI)
+ * <p>The instantiation happens at runtime, using
+ * {@link net.mountainblade.modular.ModuleManager#loadModules(java.net.URI, net.mountainblade.modular.Filter...)
  * loadModules(URI uri)}*
  * to load the modules. If a module has no implementation marked with this annotation or an interface has been marked
  * instead, nothing will happen.</p>

@@ -33,10 +33,11 @@ public interface ModuleManager extends Module {
     /**
      * Load modules from a URI.
      *
-     * @param uri    The URI to load the modules from
+     * @param uri        The URI to load the modules from
+     * @param filters    An array of {@link net.mountainblade.modular.Filter filters} to use
      * @return The collection of all successfully loaded modules.
      */
-    Collection<Module> loadModules(URI uri);
+    Collection<Module> loadModules(URI uri, Filter... filters);
 
     /**
      * Gets a specific module by its class.
