@@ -3,8 +3,8 @@ package net.mountainblade.modular.impl.location;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -60,7 +60,7 @@ public class ClasspathLocation extends ClassLocation {
 
     private Collection<File> walkDirectory(File root, Collection<String> visited) {
         if (root == null) {
-            return new ArrayList<>(0);
+            return Collections.emptyList();
         }
 
         LinkedList<File> files = new LinkedList<>();

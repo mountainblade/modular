@@ -250,12 +250,21 @@ public final class ModuleLoader extends Destroyable {
         Class<?>[] interfaces = aClass.getInterfaces();
 
         for (Class<?> anInterface : interfaces) {
-            if (!Module.class.isAssignableFrom(anInterface) || ignores.contains(anInterface)) {
+            if (!Module.class.isAssignableFrom(anInterface)) {
                 continue;
             }
 
+            // Even though it was an ignored one, maybe the parent wasn't ignored
+            if (ignores.contains(anInterface)) {
+                Class<? extends Module> recursiveLookup = getModuleClassRecursively(anInterface);
+
+                if (recursiveLookup != null) {
+                    return recursiveLookup;
+                }
+            }
+
             // Seems like we found something
-            if (Module.class.equals(anInterface)) {
+            if (!aClass.isInterface() && Module.class.equals(anInterface)) {
                 // Use our class since it probably is a direct implementation
                 return (Class<? extends Module>) aClass;
             }
@@ -270,8 +279,6 @@ public final class ModuleLoader extends Destroyable {
     }
 
     private Collection<String> findModulesIn(ClassLocation location) {
-        String canonicalName = Module.class.getCanonicalName();
-
         LinkedList<String> subClasses = new LinkedList<>();
         JarCache.Entry cacheEntry = null;
 
@@ -287,11 +294,12 @@ public final class ModuleLoader extends Destroyable {
                 try {
                     Class<?> aClass = Class.forName(className, false, classLoader);
 
+                    // We can safely ignore any interfaces, since we only want to get implementations
                     if (aClass.isInterface()) {
                         continue;
                     }
 
-                    if (Module.class.isAssignableFrom(aClass) && !canonicalName.equals(aClass.getCanonicalName())) {
+                    if (!Module.class.equals(aClass) && Module.class.isAssignableFrom(aClass)) {
                         subClasses.add(className);
                     }
 
@@ -305,7 +313,7 @@ public final class ModuleLoader extends Destroyable {
         }
 
         if (cacheEntry != null) {
-            cacheEntry.getSubclasses().put(canonicalName, subClasses);
+            cacheEntry.getSubclasses().put(Module.class.getCanonicalName(), subClasses);
         }
 
         return subClasses;
