@@ -8,6 +8,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -23,7 +25,7 @@ public final class Injector extends Destroyable {
     private static final Logger LOG = Logger.getLogger(Injector.class.getName());
 
     private final Map<Class<? extends Module>, Collection<Entry>> cache;
-    private final Collection<RegistryEntry> supports;
+    private final List<RegistryEntry> supports;
 
     private final ModuleRegistry registry;
 
@@ -113,10 +115,13 @@ public final class Injector extends Destroyable {
                     throw new InjectFailedException("Cannot inject field with itself (Why would you do that?)");
                 }
 
-                // Loop through our supports
+                // Loop through our supports in reverse order
+                ListIterator<RegistryEntry> iterator = supports.listIterator(supports.size());
                 boolean added = false;
 
-                for (RegistryEntry support : supports) {
+                while (iterator.hasPrevious()) {
+                    RegistryEntry support = iterator.previous();
+
                     // Check if we got a match
                     if (!(support.exactMatch ? support.classEntry.equals(fieldType) :
                                                     support.classEntry.isAssignableFrom(fieldType))) {
