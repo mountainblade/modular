@@ -115,6 +115,11 @@ public class DefaultModuleManager implements ModuleManager {
 
         // Get class entry and implementation annotation
         ModuleLoader.ClassEntry entry = loader.getClassEntry(module.getClass());
+        if (entry == null) {
+            LOG.warning("Provided with invalid module, will not at to registry");
+            return null;
+        }
+
         Implementation annotation = entry.getAnnotation();
 
         // Create registry entry

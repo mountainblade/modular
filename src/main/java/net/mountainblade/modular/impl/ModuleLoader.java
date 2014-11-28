@@ -272,10 +272,8 @@ public final class ModuleLoader extends Destroyable {
             return (Class<? extends Module>) anInterface;
         }
 
-        // We still didn't find a proper module class search through our superclasses
-        // TODO
-
-        return null;
+        // We still didn't find a proper module class search through our parents (superclass of superclass of super...)
+        return getModuleClassRecursively(aClass.getSuperclass());
     }
 
     private Collection<String> findModulesIn(ClassLocation location) {
