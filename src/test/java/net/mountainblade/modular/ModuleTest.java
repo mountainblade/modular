@@ -1,13 +1,14 @@
 package net.mountainblade.modular;
 
 import com.google.common.base.Stopwatch;
-import net.mountainblade.modular.annotations.*;
+import net.mountainblade.modular.annotations.Implementation;
+import net.mountainblade.modular.annotations.Initialize;
+import net.mountainblade.modular.annotations.Inject;
 import net.mountainblade.modular.examples.Example2Module;
 import net.mountainblade.modular.examples.Example2ModuleImpl;
 import net.mountainblade.modular.examples.ExampleModule;
 import net.mountainblade.modular.impl.DefaultModuleManager;
 import net.mountainblade.modular.impl.HierarchicModuleManager;
-import net.mountainblade.modular.impl.ModuleLoader;
 import net.mountainblade.modular.junit.Repeat;
 import net.mountainblade.modular.junit.RepeatRule;
 import org.junit.Assert;
@@ -100,12 +101,8 @@ public class ModuleTest {
 
     @Test
     public void testFilter() throws Exception {
-        Collection<Module> modules = new DefaultModuleManager().loadModules(UriHelper.everything(), new Filter() {
-            @Override
-            public boolean retain(ModuleLoader.ClassEntry candidate) {
-                return candidate.getImplementation().isAnnotationPresent(ItsAKeeper.class);
-            }
-        });
+        Collection<Module> modules = new DefaultModuleManager().loadModules(UriHelper.everything(),
+                new Filter.AnnotationPresent(ItsAKeeper.class));
 
         for (Module module : modules) {
             Assert.assertTrue("The Module is a spy!", module.getClass().equals(Example3Module.class));
