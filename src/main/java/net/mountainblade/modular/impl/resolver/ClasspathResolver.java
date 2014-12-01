@@ -2,6 +2,7 @@ package net.mountainblade.modular.impl.resolver;
 
 import com.google.common.base.Splitter;
 import net.mountainblade.modular.UriHelper;
+import net.mountainblade.modular.impl.location.ClassLocation;
 import net.mountainblade.modular.impl.location.ClasspathLocation;
 
 import java.io.File;
@@ -60,10 +61,10 @@ public class ClasspathResolver extends ClassResolver {
     }
 
     @Override
-    public Collection<ClasspathLocation> resolve(URI uri) {
+    public Collection<ClassLocation> resolve(URI uri) {
         // Create general list of sources
         // We do not do this in a static context since we can always add filters at runtime later on
-        Collection<ClasspathLocation> locations = new LinkedList<>();
+        Collection<ClassLocation> locations = new LinkedList<>();
 
         for (String aClass : CLASSES) {
             URI fileUri = new File(aClass).toURI();

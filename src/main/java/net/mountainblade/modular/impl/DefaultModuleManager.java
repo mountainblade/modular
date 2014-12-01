@@ -12,7 +12,6 @@ import net.mountainblade.modular.UriHelper;
 import net.mountainblade.modular.annotations.Implementation;
 import net.mountainblade.modular.annotations.Shutdown;
 import net.mountainblade.modular.impl.location.ClassLocation;
-import net.mountainblade.modular.impl.location.ClasspathLocation;
 import net.mountainblade.modular.impl.resolver.ClassResolver;
 import net.mountainblade.modular.impl.resolver.ClasspathResolver;
 import org.codehaus.plexus.classworlds.ClassWorld;
@@ -152,7 +151,7 @@ public class DefaultModuleManager implements ModuleManager {
             }
 
             // Register all found locations
-            for (ClasspathLocation location : locator.resolve(uri)) {
+            for (ClassLocation location : locator.resolve(uri)) {
                 registerLocation(location);
                 located.add(location);
             }
@@ -298,7 +297,7 @@ public class DefaultModuleManager implements ModuleManager {
      *
      * @param location The location to register
      */
-    public void registerLocation(ClasspathLocation location) {
+    public void registerLocation(ClassLocation location) {
         try {
             classWorld.newRealm(location.getRealm(), getClass().getClassLoader()).addURL(location.getUrl());
 

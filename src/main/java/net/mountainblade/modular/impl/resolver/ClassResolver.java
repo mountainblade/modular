@@ -1,6 +1,6 @@
 package net.mountainblade.modular.impl.resolver;
 
-import net.mountainblade.modular.impl.location.ClasspathLocation;
+import net.mountainblade.modular.impl.location.ClassLocation;
 
 import java.net.URI;
 import java.util.Collection;
@@ -32,7 +32,7 @@ public abstract class ClassResolver {
 
     public abstract boolean handles(URI uri);
 
-    public abstract Collection<ClasspathLocation> resolve(URI uri);
+    public abstract Collection<ClassLocation> resolve(URI uri);
 
 
     protected final boolean isBlacklisted(URI uri) {
