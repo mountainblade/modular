@@ -28,7 +28,7 @@ public class HierarchicModuleManager implements ModuleManager {
         this.parent = parent;
 
         // Re-create certain instances so we can keep them separate from the parent
-        registry = new ModuleRegistry();
+        registry = new HierarchicModuleRegistry(parent.getRegistry());
         loader = new ModuleLoader(parent.getClassWorld(), registry, new Injector(registry));
         destroyables = new LinkedList<>();
 

@@ -60,7 +60,7 @@ public class DefaultModuleManager implements ModuleManager {
 
         // Stuff we need
         classWorld = new ClassWorld();
-        registry   = new ModuleRegistry();
+        registry   = new DefaultModuleRegistry();
         injector   = new Injector(registry);
         loader     = new ModuleLoader(classWorld, registry, injector);
         locators   = new TLinkedHashSet<>();

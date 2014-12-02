@@ -1,13 +1,11 @@
 package net.mountainblade.modular.impl;
 
-import gnu.trove.set.hash.THashSet;
 import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleInformation;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
@@ -16,14 +14,14 @@ import java.util.logging.Logger;
  * @author spaceemotion
  * @version 1.0
  */
-public final class ModuleRegistry extends Destroyable {
+public abstract class ModuleRegistry extends Destroyable {
     private final Map<Class<? extends Module>, Entry> registry;
     private final Collection<Module> modules;
 
 
-    ModuleRegistry() {
-        registry = new ConcurrentHashMap<>();
-        modules = new THashSet<>();
+    ModuleRegistry(Map<Class<? extends Module>, Entry> registry, Collection<Module> modules) {
+        this.registry = registry;
+        this.modules = modules;
     }
 
     @SuppressWarnings("unchecked")
@@ -38,44 +36,52 @@ public final class ModuleRegistry extends Destroyable {
     }
 
     public Collection<Module> getModules() {
-        return Collections.unmodifiableCollection(modules);
+        return Collections.unmodifiableCollection(getModuleCollection());
     }
 
-    void addGhostModule(Class<? extends Module> moduleClass, Module module, ModuleInformation information) {
+    protected void addGhostModule(Class<? extends Module> moduleClass, Module module, ModuleInformation information) {
         Entry entry = new Entry(information, moduleClass);
         entry.setModule(module);
 
         addModule(moduleClass, entry, true);
     }
 
-    void addModule(Class<? extends Module> moduleClass, Entry entry, boolean ghost) {
-        registry.put(moduleClass, entry);
+    protected void addModule(Class<? extends Module> moduleClass, Entry entry, boolean ghost) {
+        getRegistry().put(moduleClass, entry);
 
         // If we're "ghosting" we just wanted to add the module to the registration, but it is not a "real" module
         if (!ghost) {
-            modules.add(entry.getModule());
+            getModuleCollection().add(entry.getModule());
         }
     }
 
-    Entry createEntry(Class<? extends Module> moduleClass, ModuleInformation information) {
+    protected  Entry createEntry(Class<? extends Module> moduleClass, ModuleInformation information) {
         if (moduleClass == null) {
             return null;
         }
 
         Entry entry = new Entry(information, moduleClass);
-        registry.put(moduleClass, entry);
+        getRegistry().put(moduleClass, entry);
 
         return entry;
     }
 
-    Entry getEntry(Class<? extends Module> moduleClass) {
-        return moduleClass == null ? null : registry.get(moduleClass);
+    protected Entry getEntry(Class<? extends Module> moduleClass) {
+        return moduleClass == null ? null : getRegistry().get(moduleClass);
     }
 
     @Override
     protected void destroy() {
-        registry.clear();
-        modules.clear();
+        getRegistry().clear();
+        getModuleCollection().clear();
+    }
+
+    public Map<Class<? extends Module>, Entry> getRegistry() {
+        return registry;
+    }
+
+    protected Collection<Module> getModuleCollection() {
+        return modules;
     }
 
 
@@ -86,7 +92,7 @@ public final class ModuleRegistry extends Destroyable {
         private Logger logger;
 
 
-        private Entry(ModuleInformation information, Class<? extends Module> moduleClass) {
+        protected Entry(ModuleInformation information, Class<? extends Module> moduleClass) {
             this.information = information;
             this.moduleClass = moduleClass;
         }
@@ -103,7 +109,7 @@ public final class ModuleRegistry extends Destroyable {
             return module;
         }
 
-        void setModule(Module module) {
+        protected void setModule(Module module) {
             this.module = module;
         }
 
@@ -111,7 +117,7 @@ public final class ModuleRegistry extends Destroyable {
             return logger;
         }
 
-        void setLogger(Logger logger) {
+        protected void setLogger(Logger logger) {
             this.logger = logger;
         }
 
