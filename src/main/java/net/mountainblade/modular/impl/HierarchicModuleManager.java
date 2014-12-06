@@ -20,7 +20,7 @@ public class HierarchicModuleManager implements ModuleManager {
     private final DefaultModuleManager parent;
 
     private final Collection<Destroyable> destroyables;
-    private final ModuleRegistry registry;
+    private final HierarchicModuleRegistry registry;
     private final ModuleLoader loader;
 
 
@@ -66,7 +66,7 @@ public class HierarchicModuleManager implements ModuleManager {
 
     @Override
     public Collection<Module> getModules() {
-        return CollectionHelper.combine(parent.getModules(), registry.getModules());
+        return registry.getModules();
     }
 
     @Override
@@ -75,10 +75,11 @@ public class HierarchicModuleManager implements ModuleManager {
     }
 
     public void shutdown(boolean withParent) {
-        parent.shutdown(registry, loader);
-
         if (withParent) {
             parent.shutdown();
+
+        } else {
+            parent.shutdown(registry.getChildModules(), registry, loader);
         }
 
         // Also destroy our own objects

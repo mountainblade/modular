@@ -258,7 +258,7 @@ public class DefaultModuleManager implements ModuleManager {
     @Override
     public void shutdown() {
         // Send shut down signal to all registered modules
-        shutdown(registry, loader);
+        shutdown(getRegistry().getModuleCollection().iterator(), registry, loader);
 
         // And destroy what we can
         for (Destroyable destroyable : destroyables) {
@@ -266,8 +266,11 @@ public class DefaultModuleManager implements ModuleManager {
         }
     }
 
-    protected void shutdown(ModuleRegistry registry, ModuleLoader loader) {
-        for (Module module : registry.getModules()) {
+    protected void shutdown(Iterator<Module> iterator, ModuleRegistry registry, ModuleLoader loader) {
+        while (iterator.hasNext()) {
+            Module module = iterator.next();
+
+            // Call shutdown function
             try {
                 Annotations.call(module, Shutdown.class, 0, new Class[]{ModuleManager.class}, this);
 
@@ -277,18 +280,15 @@ public class DefaultModuleManager implements ModuleManager {
 
             // Set state to shutdown
             ModuleRegistry.Entry entry = registry.getEntry(loader.getClassEntry(module.getClass()).getModule());
-
-            if (entry != null) {
-                ModuleInformation information = entry.getInformation();
-
-                if (information instanceof ModuleInformationImpl) {
-                    ((ModuleInformationImpl) information).setState(ModuleState.SHUTDOWN);
-                }
-
+            if (entry == null) {
+                LOG.warning("Unable to set state to shut down: Could not find entry for module: " + module);
                 continue;
             }
 
-            LOG.warning("Unable to set state to shut down: Could not find entry for module: " + module);
+            ModuleInformation information = entry.getInformation();
+            if (information instanceof ModuleInformationImpl) {
+                ((ModuleInformationImpl) information).setState(ModuleState.SHUTDOWN);
+            }
         }
     }
 

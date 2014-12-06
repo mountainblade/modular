@@ -19,30 +19,18 @@ import java.util.Set;
  * @version 1.0
  */
 public final class HierarchicModuleRegistry extends ModuleRegistry {
-    private final Map<Class<? extends Module>, Entry> registry;
-    private final Collection<Module> modules;
-
 
     HierarchicModuleRegistry(ModuleRegistry parent) {
-        super(parent.getRegistry(), parent.getModuleCollection());
-
-        registry = new CombinedTHashMap<>(parent.getRegistry());
-        modules = new CombinedCollection<>(parent.getModuleCollection());
+        super(new CombinedTHashMap<>(parent.getRegistry()), new CombinedCollection<>(parent.getModuleCollection()));
     }
 
-    @Override
-    public Map<Class<? extends Module>, Entry> getRegistry() {
-        return registry;
-    }
-
-    @Override
-    protected Collection<Module> getModuleCollection() {
-        return modules;
+    Iterator<Module> getChildModules() {
+        return ((CombinedCollection<Module>) getModuleCollection()).childIterator();
     }
 
 
     @SuppressWarnings("NullableProblems")
-    private class CombinedCollection<E> extends LinkedList<E> {
+    private static class CombinedCollection<E> extends LinkedList<E> {
         private final Collection<E> parent;
 
 
@@ -65,19 +53,32 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
             return Iterables.concat(parent, this).iterator();
         }
 
+        public Iterator<E> childIterator() {
+            return super.iterator();
+        }
+
         @Override
         public int size() {
             return parent.size() + super.size();
         }
 
         @Override
+        public boolean isEmpty() {
+            return parent.isEmpty() && super.isEmpty();
+        }
+
+        @Override
+        public E get(int index) {
+            return index < parent.size() ? null : super.get(index);
+        }
+
+        @Override
         public Object[] toArray() {
             Object[] result = new Object[size()];
-            Iterator<E> iterator = iterator();
-
             int i = 0;
-            while (iterator.hasNext()) {
-                result[i++] = iterator.next();
+
+            for (E e : this) {
+                result[i++] = e;
             }
 
             return result;
@@ -91,12 +92,11 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
                 a = (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
             }
 
-            Iterator<E> iterator = iterator();
             Object[] result = a;
-
             int i = 0;
-            while (iterator.hasNext()) {
-                result[i++] = iterator.next();
+
+            for (E e : this) {
+                result[i++] = e;
             }
 
             if (a.length > size) {
@@ -108,7 +108,7 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
 
     }
 
-    private class CombinedTHashMap<K, V> extends THashMap<K, V> {
+    private static class CombinedTHashMap<K, V> extends THashMap<K, V> {
         private final Map<K, V> parent;
 
 

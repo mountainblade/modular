@@ -37,7 +37,7 @@ public class ModuleTest {
     public RepeatRule repeatRule = new RepeatRule();
 
 
-    @Test
+    @Test(timeout = 1000L)
     @Repeat(3) // Repeat because the topological sort is kind of random
     public void testModules() throws Exception {
         URI exampleUri = UriHelper.of(ExampleModule.class.getPackage());
