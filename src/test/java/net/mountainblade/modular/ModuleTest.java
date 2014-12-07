@@ -33,6 +33,8 @@ import java.util.logging.Logger;
  */
 @RunWith(JUnit4.class)
 public class ModuleTest {
+    private static boolean runOnce = false;
+
     @Rule
     public RepeatRule repeatRule = new RepeatRule();
 
@@ -90,13 +92,20 @@ public class ModuleTest {
 
         // Also check if the hierarchical / inherited management is working
         HierarchicModuleManager hierarchicManager = new HierarchicModuleManager(manager);
-        hierarchicManager.loadModules(UriHelper.of(Example3Module.class));
+        Collection<Module> loaded = hierarchicManager.loadModules(UriHelper.of(Example3Module.class));
 
+        Assert.assertEquals("3rd module may have been loaded incorrectly", 1, loaded.size());
         Assert.assertFalse("The parent knows about the children!", manager.getModule(Example3Module.class).isPresent());
 
         // And shut down the systems (hierarchic also shuts down the normal one)
-        hierarchicManager.shutdown(true);
+        System.err.println("--- Shutting down " + (runOnce ? "with" : "without") + " parent ---");
+        hierarchicManager.shutdown(runOnce);
+
+        System.err.println("--- Shutting down default manager ---");
         manager2.shutdown();
+
+        // Set state for the next time
+        runOnce = !runOnce;
     }
 
     @Test

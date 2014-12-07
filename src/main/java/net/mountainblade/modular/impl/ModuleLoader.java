@@ -33,15 +33,24 @@ import java.util.regex.Pattern;
 public final class ModuleLoader extends Destroyable {
     private static final Logger LOG = Logger.getLogger(ModuleLoader.class.getName());
 
+    /** A cache for classes inside JAR containers */
+    private static final JarCache JAR_CACHE = new JarCache();
+
+    /** A map containing all meta data about the indexed classes */
+    private static final Map<Class<?>, ClassEntry> CLASS_CACHE = new THashMap<>();
+
+    /** A set of classes that have been skipped as they contain no information (and should be skipped in the future) */
+    private static final Set<Class<?>> INVALID_CACHE = new THashSet<>();
+
+    /** The class world to load our classes much easier */
     private final ClassWorld classWorld;
+
+    /** The registry we're getting the entries from */
     private final ModuleRegistry registry;
+
+    /** The injector to use during the loading process */
     private final Injector injector;
 
-    /** A cache for classes inside JAR containers */
-    private final JarCache jarCache;
-
-    private final Map<Class<?>, ClassEntry> classCache;
-    private final Set<Class<?>> invalidCache;
     private final Set<Class<?>> ignores;
 
 
@@ -49,10 +58,6 @@ public final class ModuleLoader extends Destroyable {
         this.classWorld = classWorld;
         this.registry = registry;
         this.injector = injector;
-
-        jarCache = new JarCache();
-        classCache = new THashMap<>();
-        invalidCache = new THashSet<>();
 
         ignores = new THashSet<>();
     }
@@ -150,25 +155,25 @@ public final class ModuleLoader extends Destroyable {
     public ClassEntry getClassEntry(Class<? extends Module> implClass) {
         // Early checking for null, against module, and if we already checked and saw that it's invalid
         if (implClass == null || Module.class.equals(implClass) || Implementation.Default.class.equals(implClass) ||
-                Inject.Current.class.equals(implClass) || invalidCache.contains(implClass)) {
+                Inject.Current.class.equals(implClass) || INVALID_CACHE.contains(implClass)) {
             return null;
         }
 
         // Check lookup first
-        ClassEntry classEntry = classCache.get(implClass);
+        ClassEntry classEntry = CLASS_CACHE.get(implClass);
 
         // If we found nothing, take the hard route
         if (classEntry == null) {
             // We do not allow interface or annotation modules - that would not work and is thus just ... silly
             if (implClass.isInterface() || implClass.isAnnotation()) {
-                invalidCache.add(implClass);
+                INVALID_CACHE.add(implClass);
                 return null;
             }
 
             // Return null for classes that don't have the annotation
             Implementation implementation = implClass.getAnnotation(Implementation.class);
             if (implementation == null) {
-                invalidCache.add(implClass);
+                INVALID_CACHE.add(implClass);
                 return null;
             }
 
@@ -185,17 +190,17 @@ public final class ModuleLoader extends Destroyable {
                 module = getModuleClassRecursively(implClass);
 
                 if (module == null) {
-                    invalidCache.add(implClass);
+                    INVALID_CACHE.add(implClass);
                     return null;
                 }
             }
 
             // Get dependencies via the injector, create new class entry and add to cache so we don't need to this again
             classEntry = new ClassEntry(module, implClass, implementation, injector.discover(implClass));
-            classCache.put(implClass, classEntry);
+            CLASS_CACHE.put(implClass, classEntry);
 
             // Also add the module, so we can get our dependencies right
-            classCache.put(module, classEntry);
+            CLASS_CACHE.put(module, classEntry);
         }
 
         return classEntry;
@@ -204,9 +209,6 @@ public final class ModuleLoader extends Destroyable {
     @Override
     public void destroy() {
         injector.destroy();
-
-        invalidCache.clear();
-        classCache.clear();
     }
 
     @SuppressWarnings("unchecked")
@@ -281,7 +283,7 @@ public final class ModuleLoader extends Destroyable {
         JarCache.Entry cacheEntry = null;
 
         if (location instanceof JarClassLocation) {
-            cacheEntry = jarCache.getEntry(location.getUri());
+            cacheEntry = JAR_CACHE.getEntry(location.getUri());
         }
 
         try {

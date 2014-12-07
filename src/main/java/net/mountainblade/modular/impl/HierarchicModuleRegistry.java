@@ -1,6 +1,5 @@
 package net.mountainblade.modular.impl;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import gnu.trove.map.hash.THashMap;
 import net.mountainblade.modular.Module;
@@ -20,8 +19,8 @@ import java.util.Set;
  */
 public final class HierarchicModuleRegistry extends ModuleRegistry {
 
-    HierarchicModuleRegistry(ModuleRegistry parent) {
-        super(new CombinedTHashMap<>(parent.getRegistry()), new CombinedCollection<>(parent.getModuleCollection()));
+    HierarchicModuleRegistry(DefaultModuleRegistry parent) {
+        super(new CombinedTHashMap<>(parent.getRegistry()), new CombinedCollection<Module>(parent));
     }
 
     Iterator<Module> getChildModules() {
@@ -31,11 +30,20 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
 
     @SuppressWarnings("NullableProblems")
     private static class CombinedCollection<E> extends LinkedList<E> {
-        private final Collection<E> parent;
+        //
+        // This class has some trouble with exceptions, since we try to combine two collections while keeping
+        // both intact.
+        //
+        // If something comes up and modules are acting weird this might be the place to look at.
+        // Just saying.
+        //
+
+        /** The parent collection */
+        private final Set<E> parent;
 
 
-        public CombinedCollection(Collection<E> parent) {
-            this.parent = parent;
+        public CombinedCollection(DefaultModuleRegistry parent) {
+            this.parent = ((Set<E>) parent.getModuleCollection());
         }
 
         @Override
@@ -50,11 +58,37 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
 
         @Override
         public Iterator<E> iterator() {
-            return Iterables.concat(parent, this).iterator();
+            final Iterator<E> parentIterator = parent.iterator();
+            final Iterator<E> childIterator = super.iterator();
+
+            return new Iterator<E>() {
+                @Override
+                public boolean hasNext() {
+                    return parentIterator.hasNext() || childIterator.hasNext();
+                }
+
+                @Override
+                public E next() {
+                    return getIterator().next();
+                }
+
+                @Override
+                public void remove() {
+                    getIterator().remove();
+                }
+
+                private Iterator<E> getIterator() {
+                    return !childIterator.hasNext() ? parentIterator : childIterator;
+                }
+            };
         }
 
         public Iterator<E> childIterator() {
             return super.iterator();
+        }
+
+        public Object[] getChildArray() {
+            return super.toArray();
         }
 
         @Override
@@ -144,8 +178,8 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
 
         @Override
         public V get(Object key) {
-            V value = super.get(key);
-            return value != null ? value : parent.get(key);
+            V value = parent.get(key);
+            return value != null ? value : super.get(key);
         }
 
         @Override

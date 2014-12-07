@@ -270,6 +270,21 @@ public class DefaultModuleManager implements ModuleManager {
         while (iterator.hasNext()) {
             Module module = iterator.next();
 
+            // Get module entry
+            ModuleRegistry.Entry entry = registry.getEntry(loader.getClassEntry(module.getClass()).getModule());
+            if (entry == null) {
+                LOG.warning("Unable to set state to shut down: Could not find entry for module: " + module);
+                continue;
+            }
+
+            // Skip already shut down modules
+            ModuleInformation information = entry.getInformation();
+            if (ModuleState.SHUTDOWN.equals(information.getState())) {
+                continue;
+            }
+
+            LOG.fine("Shutting down " + module.getClass().getName());
+
             // Call shutdown function
             try {
                 Annotations.call(module, Shutdown.class, 0, new Class[]{ModuleManager.class}, this);
@@ -278,14 +293,7 @@ public class DefaultModuleManager implements ModuleManager {
                 LOG.log(Level.WARNING, "Could not invoke shutdown method on module: " + module, e);
             }
 
-            // Set state to shutdown
-            ModuleRegistry.Entry entry = registry.getEntry(loader.getClassEntry(module.getClass()).getModule());
-            if (entry == null) {
-                LOG.warning("Unable to set state to shut down: Could not find entry for module: " + module);
-                continue;
-            }
-
-            ModuleInformation information = entry.getInformation();
+            // Set state to "shutdown"
             if (information instanceof ModuleInformationImpl) {
                 ((ModuleInformationImpl) information).setState(ModuleState.SHUTDOWN);
             }
