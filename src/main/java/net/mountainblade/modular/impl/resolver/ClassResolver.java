@@ -22,18 +22,17 @@ public abstract class ClassResolver {
         nameBlacklist = new LinkedList<>();
     }
 
-    public Collection<URI> getUriBlacklist() {
+    public final Collection<URI> getUriBlacklist() {
         return uriBlacklist;
     }
 
-    public Collection<String> getNameBlacklist() {
+    public final Collection<String> getNameBlacklist() {
         return nameBlacklist;
     }
 
     public abstract boolean handles(URI uri);
 
     public abstract Collection<ClassLocation> resolve(URI uri);
-
 
     protected final boolean isBlacklisted(URI uri) {
         // Use our name blacklist first
@@ -47,6 +46,5 @@ public abstract class ClassResolver {
         // Then use the URI blacklist
         return this.getUriBlacklist().contains(uri);
     }
-
 
 }

@@ -3,8 +3,8 @@ package net.mountainblade.modular.impl.location;
 import net.mountainblade.modular.UriHelper;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 
 /**
  * Represents a location for classes that are inside a .jar file.
@@ -25,8 +25,9 @@ public class JarClassLocation extends ClassLocation {
     @Override
     public Collection<String> listClassNames() {
         if (!isJar) {
-            return new ArrayList<>(0);
+            return Collections.emptyList();
         }
+
 
         // TODO make this work for JAR files
         return null;

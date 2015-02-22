@@ -8,8 +8,7 @@ import java.util.Collection;
 import java.util.Properties;
 
 class ModuleInformationImpl implements ModuleInformation {
-    private final Properties properties = new Properties();
-
+    private final Properties properties;
     private final Collection<String> authors;
     private final String version;
 
@@ -20,6 +19,7 @@ class ModuleInformationImpl implements ModuleInformation {
         this.version = version;
         this.authors = Arrays.asList(authors);
 
+        this.properties = new Properties();
         this.state = ModuleState.UNKNOWN;
     }
 

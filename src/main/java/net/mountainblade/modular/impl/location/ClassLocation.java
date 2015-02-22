@@ -40,6 +40,7 @@ public abstract class ClassLocation {
 
         } catch (MalformedURLException e) {
             LOG.log(Level.WARNING, "Could not convert URI to URL", e);
+            throw new IllegalArgumentException("Invalid URI given", e);
         }
     }
 
