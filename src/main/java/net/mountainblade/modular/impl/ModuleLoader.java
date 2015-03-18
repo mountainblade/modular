@@ -213,8 +213,10 @@ public final class ModuleLoader extends Destroyable {
 
     @SuppressWarnings("unchecked")
     Collection<ClassEntry> getCandidatesWithPattern(Pattern regex, Collection<ClassLocation> located) {
-        Collection<ClassEntry> moduleClasses = new LinkedList<>();
+        final Collection<Class<? extends Module>> candidates = new LinkedList<>();
+        final Collection<ClassEntry> moduleClasses = new LinkedList<>();
 
+        // Walk over each location first, then build the list of potential modules
         for (ClassLocation location : located) {
             Collection<String> classNames = findModulesIn(location);
 
@@ -229,13 +231,7 @@ public final class ModuleLoader extends Destroyable {
                 }
 
                 try {
-                    Class<?> candidate = loadClass(location, className);
-                    ClassEntry classEntry = getClassEntry((Class<? extends Module>) candidate);
-
-                    // Add to our classes
-                    if (classEntry != null) {
-                        moduleClasses.add(classEntry);
-                    }
+                    candidates.add((Class<? extends Module>) loadClass(location, className));
 
                 } catch (ClassNotFoundException e) {
                     LOG.log(Level.WARNING, "Could not properly load module candidate", e);
@@ -243,7 +239,32 @@ public final class ModuleLoader extends Destroyable {
             }
         }
 
+        // Go through each candidate to search if we got one that got overwritten by a subclass, that's the sole purpose
+        // of all this ordering and looping - to detect if an implementation became obsolete by a sub-implementation
+        for (Class<? extends Module> candidate : candidates) {
+            if (candidateIsObsolete(candidate, candidates)) {
+                continue;
+            }
+
+            // Try to get class entry and add to our classes
+            ClassEntry classEntry = getClassEntry(candidate);
+            if (classEntry != null) {
+                moduleClasses.add(classEntry);
+                System.out.println(classEntry.getImplementation());
+            }
+        }
+
         return moduleClasses;
+    }
+
+    private boolean candidateIsObsolete(Class<? extends Module> candidate, Collection<Class<? extends Module>> others) {
+        for (Class<? extends Module> other : others) {
+            if (other.getSuperclass() == candidate) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @SuppressWarnings("unchecked")
