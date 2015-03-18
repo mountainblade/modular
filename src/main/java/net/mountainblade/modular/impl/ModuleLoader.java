@@ -250,7 +250,6 @@ public final class ModuleLoader extends Destroyable {
             ClassEntry classEntry = getClassEntry(candidate);
             if (classEntry != null) {
                 moduleClasses.add(classEntry);
-                System.out.println(classEntry.getImplementation());
             }
         }
 
