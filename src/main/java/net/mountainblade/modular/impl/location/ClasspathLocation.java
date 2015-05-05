@@ -1,5 +1,7 @@
 package net.mountainblade.modular.impl.location;
 
+import gnu.trove.set.hash.TLinkedHashSet;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -17,7 +19,6 @@ import java.util.logging.Logger;
  */
 public class ClasspathLocation extends ClassLocation {
     private static final Logger LOG = Logger.getLogger(ClasspathLocation.class.getName());
-    private static final String FILE_SUFFIX = ".class";
 
 
     public ClasspathLocation(URI uri, String realm) {
@@ -32,27 +33,8 @@ public class ClasspathLocation extends ClassLocation {
         File root = new File(uri);
         String rootPath = root.getAbsolutePath();
 
-        for (File file : walkDirectory(root, new LinkedList<String>())) {
-            // We only need class files
-            if (!file.getName().endsWith(FILE_SUFFIX)) {
-                continue;
-            }
-
-            String name = file.getAbsolutePath()
-                    // Replace path prefix and ending slash
-                    .substring(rootPath.length() + 1)
-
-                    // Remove trailing .class
-                    .replace(FILE_SUFFIX, "")
-
-                    // Make the file name a proper class name
-                    .replace("\\", "/")
-                    .replace("/", ".");
-
-            // Only add if we got a name that is not on the blacklist for class names either
-            if (!isBlacklisted(name)) {
-                classNames.add(name);
-            }
+        for (File file : walkDirectory(root, new TLinkedHashSet<String>())) {
+            addProperClassName(file.getAbsolutePath().substring(rootPath.length() + 1), classNames);
         }
 
         return classNames;
@@ -72,10 +54,7 @@ public class ClasspathLocation extends ClassLocation {
 
                 try {
                     String canonicalPath = file.getCanonicalPath();
-
-                    if (!visited.contains(canonicalPath)) {
-                        visited.add(canonicalPath);
-                    }
+                    visited.add(canonicalPath);
 
                 } catch (IOException e) {
                     LOG.log(Level.WARNING, "Could not get canonical path of file: " + file, e);

@@ -4,6 +4,7 @@ import com.google.common.collect.Sets;
 import gnu.trove.map.hash.THashMap;
 import net.mountainblade.modular.Module;
 
+import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -17,7 +18,7 @@ import java.util.Set;
  * @author spaceemotion
  * @version 1.0
  */
-public final class HierarchicModuleRegistry extends ModuleRegistry {
+class HierarchicModuleRegistry extends ModuleRegistry {
 
     HierarchicModuleRegistry(DefaultModuleRegistry parent) {
         super(new CombinedTHashMap<>(parent.getRegistry()), new CombinedCollection<Module>(parent));
@@ -87,10 +88,6 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
             return super.iterator();
         }
 
-        public Object[] getChildArray() {
-            return super.toArray();
-        }
-
         @Override
         public int size() {
             return parent.size() + super.size();
@@ -123,7 +120,7 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
         public <T> T[] toArray(T[] a) {
             int size = size();
             if (a.length < size) {
-                a = (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
+                a = (T[]) Array.newInstance(a.getClass().getComponentType(), size);
             }
 
             Object[] result = a;
@@ -142,6 +139,7 @@ public final class HierarchicModuleRegistry extends ModuleRegistry {
 
     }
 
+    @SuppressWarnings("NullableProblems")
     private static class CombinedTHashMap<K, V> extends THashMap<K, V> {
         private final Map<K, V> parent;
 

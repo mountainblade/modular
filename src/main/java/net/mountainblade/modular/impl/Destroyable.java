@@ -9,7 +9,7 @@ package net.mountainblade.modular.impl;
 public abstract class Destroyable {
 
     /**
-     * "Destroys" the object by clearing memory (e.g. empty out lists and maps).
+     * Attempts to "destroy" the object by clearing memory (e.g. empty out lists and maps).
      */
     protected abstract void destroy();
 

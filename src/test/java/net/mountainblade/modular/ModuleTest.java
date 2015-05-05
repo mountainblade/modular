@@ -33,7 +33,7 @@ import java.util.logging.Logger;
  */
 @RunWith(JUnit4.class)
 public class ModuleTest {
-    private static boolean runOnce = false;
+    private static boolean ranOnce = false;
 
     @Rule
     public RepeatRule repeatRule = new RepeatRule();
@@ -98,14 +98,14 @@ public class ModuleTest {
         Assert.assertFalse("The parent knows about the children!", manager.getModule(Example3Module.class).isPresent());
 
         // And shut down the systems (hierarchic also shuts down the normal one)
-        System.err.println("--- Shutting down " + (runOnce ? "with" : "without") + " parent ---");
-        hierarchicManager.shutdown(runOnce);
+        System.err.println("--- Shutting down " + (ranOnce ? "with" : "without") + " parent ---");
+        hierarchicManager.shutdown(ranOnce);
 
         System.err.println("--- Shutting down default manager ---");
         manager2.shutdown();
 
         // Set state for the next time
-        runOnce = !runOnce;
+        ranOnce = !ranOnce;
     }
 
     @Test
@@ -139,7 +139,7 @@ public class ModuleTest {
     }
 
     @Retention(RetentionPolicy.RUNTIME)
-    public static @interface ItsAKeeper {
+    public @interface ItsAKeeper {
         // yay
     }
 

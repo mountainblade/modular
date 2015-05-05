@@ -12,7 +12,19 @@ import java.util.List;
  * @author spaceemotion
  * @version 1.0
  */
-public class Annotations {
+public final class Annotations {
+    /**
+     * Represents the void. Nothing to see here. Move along. Now. Please.
+     * <br>
+     * This is used when we want to return something, but it cannot be a "known" object. And since java does not allow
+     * instantiation of the {@link java.lang.Void} type...
+     */
+    public static final Object NOTHING = new Object();
+
+
+    private Annotations() {
+        // Private constructor
+    }
 
     /**
      * Calls a method with a specific annotation and parameters.
@@ -34,7 +46,7 @@ public class Annotations {
         for (Method method : declaredMethods) {
             Object returnValue = callMethod(object, annotation, required, argTypes, method, args);
 
-            if (!Nothing.TO_SEE_HERE.equals(returnValue)) {
+            if (!NOTHING.equals(returnValue)) {
                 return returnValue;
             }
         }
@@ -45,7 +57,7 @@ public class Annotations {
             }
 
             Object returnValue = callMethod(object, annotation, required, argTypes, method, args);
-            if (!Nothing.TO_SEE_HERE.equals(returnValue)) {
+            if (!NOTHING.equals(returnValue)) {
                 return returnValue;
             }
         }
@@ -58,13 +70,13 @@ public class Annotations {
             throws IllegalAccessException, InvocationTargetException {
         // Check if we got the correct annotation
         if (method.getAnnotation(annotation) == null) {
-            return Nothing.TO_SEE_HERE;
+            return NOTHING;
         }
 
         // Get and check general parameter types
         Class<?>[] methodParameterTypes = method.getParameterTypes();
         if (methodParameterTypes.length < required) {
-            return Nothing.TO_SEE_HERE;
+            return NOTHING;
         }
 
         // Slowly decrease number of optional parameters, so we always get the "most available" one
@@ -98,16 +110,5 @@ public class Annotations {
 
         return true;
     }
-
-    /**
-     * Represents the void. Nothing to see here. Move along. Now. Please.
-     * <br>
-     * This is used when we want to return something, but it cannot be a "known" object. And since java does not allow
-     * instantiation of the {@link java.lang.Void} type...
-     *
-     * @author spaceemotion
-     * @version 1.0
-     */
-    private enum Nothing { TO_SEE_HERE }
 
 }

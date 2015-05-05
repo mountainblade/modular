@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 public abstract class ClassLocation {
     private static final Logger LOG = Logger.getLogger(ClassLocation.class.getName());
     private static final Collection<String> NAME_BLACKLIST = new TLinkedHashSet<>();
+    private static final String FILE_SUFFIX = ".class";
 
     static {
         // Add maven stuff
@@ -56,7 +57,31 @@ public abstract class ClassLocation {
         return url;
     }
 
+    public ClassLoader getClassLoader() {
+        return getClass().getClassLoader();
+    }
+
     public abstract Collection<String> listClassNames();
+
+    protected void addProperClassName(String classPath, Collection<String> classNames) {
+        // We only need class files
+        if (!classPath.endsWith(FILE_SUFFIX)) {
+            return;
+        }
+
+        String name = classPath
+                // Remove trailing .class
+                .replace(FILE_SUFFIX, "")
+
+                        // Make the file name a proper class name
+                .replace("\\", "/")
+                .replace("/", ".");
+
+        // Only add if we got a name that is not on the blacklist for class names either
+        if (!isBlacklisted(name)) {
+            classNames.add(name);
+        }
+    }
 
     protected final boolean isBlacklisted(String className) {
         for (String blackListed : NAME_BLACKLIST) {
