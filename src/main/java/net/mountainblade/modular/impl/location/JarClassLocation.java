@@ -24,7 +24,7 @@ public class JarClassLocation extends ClassLocation {
      *                   valid jar file (usually assumed by its extension)
      */
     public JarClassLocation(File jarFile) {
-        super(jarFile.toURI(), "external");
+        super(jarFile.toURI(), jarFile.getAbsolutePath().replace(File.separatorChar, '.'));
 
         this.jarFile = jarFile;
     }
