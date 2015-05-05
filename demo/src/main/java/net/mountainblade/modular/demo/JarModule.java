@@ -1,8 +1,7 @@
 package net.mountainblade.modular.demo;
 
-import net.mountainblade.modular.annotations.Implementation;
-import net.mountainblade.modular.annotations.Initialize;
-import net.mountainblade.modular.annotations.Inject;
+import net.mountainblade.modular.Module;
+import net.mountainblade.modular.annotations.*;
 
 import java.util.logging.Logger;
 
@@ -12,8 +11,8 @@ import java.util.logging.Logger;
  * @author spaceemotion
  * @version 1.0
  */
-@Implementation(authors = "spaceemotion")
-public class JarModule {
+@Implementation(authors = "spaceemotion", version = "1.0.2")
+public class JarModule implements Module {
     @Inject
     private Logger logger;
 
@@ -21,6 +20,11 @@ public class JarModule {
     @Initialize
     public void initialize() {
         logger.info("Hello world!");
+    }
+
+    @Shutdown
+    public void shutdown() {
+        logger.info("Bye world!");
     }
 
 }
