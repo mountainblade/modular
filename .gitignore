@@ -2,3 +2,4 @@
 *.iml
 target
 .DS_Store
+src/test/resources/modular-demo-*.jar
