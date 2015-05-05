@@ -20,6 +20,7 @@ import org.junit.runners.JUnit4;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.net.URI;
+import java.net.URL;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
@@ -37,7 +38,6 @@ public class ModuleTest {
 
     @Rule
     public RepeatRule repeatRule = new RepeatRule();
-
 
     @Test(timeout = 1000L)
     @Repeat(3) // Repeat because the topological sort is kind of random
@@ -106,6 +106,17 @@ public class ModuleTest {
 
         // Set state for the next time
         ranOnce = !ranOnce;
+    }
+
+    @Test
+    public void testJars() throws Exception {
+        final DefaultModuleManager manager = new DefaultModuleManager();
+
+        final URL resource = this.getClass().getResource("/modular-demo-1.0-SNAPSHOT.jar");
+        Assert.assertNotNull("couldn't find jar, be sure to run \"mvn package\" on the demo project first", resource);
+        final Collection<Module> modules = manager.loadModules(UriHelper.folderOf(resource.getFile(), "net.**"));
+        Assert.assertEquals(1, modules.size());
+        manager.shutdown();
     }
 
     @Test

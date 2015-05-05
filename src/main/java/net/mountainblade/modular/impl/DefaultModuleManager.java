@@ -14,6 +14,7 @@ import net.mountainblade.modular.annotations.Shutdown;
 import net.mountainblade.modular.impl.location.ClassLocation;
 import net.mountainblade.modular.impl.resolver.ClassResolver;
 import net.mountainblade.modular.impl.resolver.ClasspathResolver;
+import net.mountainblade.modular.impl.resolver.JarResolver;
 import org.codehaus.plexus.classworlds.ClassWorld;
 import org.codehaus.plexus.classworlds.realm.DuplicateRealmException;
 
@@ -67,6 +68,7 @@ public class DefaultModuleManager implements ModuleManager {
 
         // Add defaults
         getLocators().add(new ClasspathResolver());
+        getLocators().add(new JarResolver());
 
         // Also register ourselves so other modules can use this as implementation via injection
         registry.addGhostModule(ModuleManager.class, this, new MavenModuleInformation());
@@ -143,7 +145,7 @@ public class DefaultModuleManager implements ModuleManager {
 
     protected Collection<Module> loadModules(URI uri, ModuleLoader loader, Filter... filters) {
         // Locate stuff from URI - using different providers (class pat, file, ...)
-        Collection<ClassLocation> located = new LinkedList<>();
+        final Collection<ClassLocation> located = new LinkedList<>();
 
         for (ClassResolver locator : locators) {
             if (!locator.handles(uri)) {
@@ -158,18 +160,18 @@ public class DefaultModuleManager implements ModuleManager {
         }
 
         // Collect a bunch of classes that are Modules, plus the interface they're implementing
-        Collection<ModuleLoader.ClassEntry> candidates = loader.getCandidatesWithPattern(
+        final Collection<ModuleLoader.ClassEntry> candidates = loader.getCandidatesWithPattern(
                 (UriHelper.everything().equals(uri)) ? null : UriHelper.createPattern(uri), located);
 
         // Apply filters - we do the filters first, so in case we don't have any, we don't iterate over all the entries
-        Set<ModuleLoader.ClassEntry> entries = new TLinkedHashSet<>(candidates);
+        final Set<ModuleLoader.ClassEntry> entries = new TLinkedHashSet<>(candidates);
         Iterator<ModuleLoader.ClassEntry> iterator;
 
         for (Filter filter : filters) {
             iterator = entries.iterator();
 
             while (iterator.hasNext()) {
-                ModuleLoader.ClassEntry classEntry = iterator.next();
+                final ModuleLoader.ClassEntry classEntry = iterator.next();
 
                 if (!filter.retain(classEntry)) {
                     iterator.remove();
@@ -179,7 +181,7 @@ public class DefaultModuleManager implements ModuleManager {
 
         // Prepare topological sort so we don't have trouble with dependencies
         Map<ModuleLoader.ClassEntry, TopologicalSortedList.Node<ModuleLoader.ClassEntry>> nodes = new THashMap<>();
-        TopologicalSortedList<ModuleLoader.ClassEntry> sortedCandidates = new TopologicalSortedList<>();
+        final TopologicalSortedList<ModuleLoader.ClassEntry> sortedCandidates = new TopologicalSortedList<>();
 
         for (ModuleLoader.ClassEntry classEntry : entries) {
             TopologicalSortedList.Node<ModuleLoader.ClassEntry> node = nodes.get(classEntry);
@@ -195,7 +197,7 @@ public class DefaultModuleManager implements ModuleManager {
                     continue;
                 }
 
-                Class<? extends Module> dependency = ((Injector.ModuleEntry) dependencyEntry).getDependency();
+                final Class<? extends Module> dependency = ((Injector.ModuleEntry) dependencyEntry).getDependency();
                 ModuleLoader.ClassEntry depClassEntry = loader.getClassEntry(dependency);
 
                 if (depClassEntry != null) {
@@ -215,7 +217,7 @@ public class DefaultModuleManager implements ModuleManager {
         }
 
         // Execute the sort
-        Collection<Module> modules = new LinkedList<>();
+        final Collection<Module> modules = new LinkedList<>();
 
         try {
             sortedCandidates.sort();
@@ -227,7 +229,7 @@ public class DefaultModuleManager implements ModuleManager {
 
         // Load all, sorted modules using our loader
         for (TopologicalSortedList.Node<ModuleLoader.ClassEntry> candidate : sortedCandidates) {
-            Module module = loader.loadModule(this, candidate.getValue());
+            final Module module = loader.loadModule(this, candidate.getValue());
 
             if (module == null) {
                 LOG.warning("Could not load modules properly, cancelling loading procedure");

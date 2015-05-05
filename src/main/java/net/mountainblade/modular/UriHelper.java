@@ -1,6 +1,8 @@
 package net.mountainblade.modular;
 
+import java.io.File;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.regex.Pattern;
 
 /**
@@ -40,12 +42,42 @@ public final class UriHelper {
         return of(pkg.getName() + ".**");
     }
 
+    public static URI folderOf(String file, String... of) {
+        return file(new File(file).getParentFile(), of);
+    }
+
+    public static URI file(String file, String... of) {
+        return file(new File(file), of);
+    }
+
+    public static URI file(File file, String... of) {
+        final URI uri = file.toURI();
+
+        if (of.length > 0) {
+            try {
+                return new URI("file", null, uri.getSchemeSpecificPart(), of(of[0]).getSchemeSpecificPart());
+
+            } catch (URISyntaxException ignore) {
+                // Silently fail
+            }
+        }
+
+        return uri;
+    }
+
     public static boolean matchesScheme(URI uri, String scheme) {
         return uri != null && uri.getScheme().equals(scheme);
     }
 
     public static Pattern createPattern(URI uri) {
-        return Pattern.compile((uri.getAuthority() + uri.getPath()).replace("**", ".+").replace("*", "[^\\.]*"));
+        String scheme = uri.getScheme().equalsIgnoreCase("file") ? uri.getFragment() : uri.getSchemeSpecificPart();
+        return scheme == null ? null : Pattern.compile(
+                // Account for fragmented stuff
+                scheme.substring(scheme.startsWith("//") ? 2 : 0)
+
+                // Translate classpath wildcards to regex
+                .replace("**", ".+")
+                .replace("*", "[^\\.]*"));
     }
 
 }
