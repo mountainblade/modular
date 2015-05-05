@@ -30,7 +30,12 @@ public abstract class ClassLocation {
     protected final String realm;
     protected URL url;
 
-
+    /**
+     * Creates a new class location inside the given realm.
+     *
+     * @param uri      The URI of the class file
+     * @param realm    The realm to register the class file in
+     */
     public ClassLocation(URI uri, String realm) {
         this.uri = uri;
         this.realm = realm;
@@ -45,24 +50,50 @@ public abstract class ClassLocation {
         }
     }
 
+    /**
+     * Gets the class specific URI which contains the exact class path as its {@link URI#getSchemeSpecificPart() scheme
+     * specific part}.
+     *
+     * @return The class URI
+     */
     public URI getUri() {
         return uri;
     }
 
+    /**
+     * Gets the realm the current class is loaded in. This is used to distinguish between local and external/remote
+     * classes
+     *
+     * @return The realm
+     */
     public String getRealm() {
         return realm;
     }
 
+    /**
+     * Helper method to fetch the (already converted) URL of the classes' URI
+     *
+     * @return The class URL
+     * @see #getUri()
+     */
     public URL getUrl() {
         return url;
     }
 
-    public ClassLoader getClassLoader() {
-        return getClass().getClassLoader();
-    }
-
+    /**
+     * Abstract method to fetch all class names inside this class path / location.
+     *
+     * @return A collection of class names (as canonical names)
+     */
     public abstract Collection<String> listClassNames();
 
+    /**
+     * Tries to add the given class path to the given collection of valid class names.
+     * This first checks if the path is a {@code .class} file and then replaces its name to be a canonical class name.
+     *
+     * @param classPath     The original class path
+     * @param classNames    The collection of names to add to
+     */
     protected void addProperClassName(String classPath, Collection<String> classNames) {
         // We only need class files
         if (!classPath.endsWith(FILE_SUFFIX)) {
@@ -83,6 +114,13 @@ public abstract class ClassLocation {
         }
     }
 
+    /**
+     * Checks whether or not the given class name is blacklisted.
+     * This usually blocks classes inside standard java libraries.
+     *
+     * @param className    The class name to check
+     * @return True if the class name is blacklisted, false if not
+     */
     protected final boolean isBlacklisted(String className) {
         for (String blackListed : NAME_BLACKLIST) {
             if (className.contains(blackListed)) {

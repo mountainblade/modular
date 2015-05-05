@@ -35,7 +35,7 @@ public class JarResolver extends ClassResolver {
 
         if (files != null) {
             for (File file : files) {
-                locations.add(new JarClassLocation(file, "external"));
+                locations.add(new JarClassLocation(file));
             }
         }
 

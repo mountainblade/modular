@@ -17,9 +17,15 @@ import java.util.zip.ZipInputStream;
 public class JarClassLocation extends ClassLocation {
     private final File jarFile;
 
+    /**
+     * Creates a new location for an external jar file to load classes from.
+     *
+     * @param jarFile    The jar file. It should already be checked that the given file is neither a directory nor not a
+     *                   valid jar file (usually assumed by its extension)
+     */
+    public JarClassLocation(File jarFile) {
+        super(jarFile.toURI(), "external");
 
-    public JarClassLocation(File jarFile, String realm) {
-        super(jarFile.toURI(), realm);
         this.jarFile = jarFile;
     }
 

@@ -17,7 +17,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Represents a locator for classes inside our own classpath.
+ * Represents a locator for classes inside a  own classpath.
  *
  * @author spaceemotion
  * @version 1.0
@@ -28,7 +28,9 @@ public class ClasspathResolver extends ClassResolver {
     private static final String JAVA_CLASS_PATH = System.getProperty("java.class.path");
     private static final List<String> CLASSES = Splitter.on(CLASS_PATH_SEPARATOR).splitToList(JAVA_CLASS_PATH);
 
-
+    /**
+     * Creates a new classpath resolver.
+     */
     public ClasspathResolver() {
         // Get root class loader
         ClassLoader loader = ClassLoader.getSystemClassLoader();

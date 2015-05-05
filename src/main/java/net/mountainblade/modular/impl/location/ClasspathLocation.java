@@ -20,7 +20,12 @@ import java.util.logging.Logger;
 public class ClasspathLocation extends ClassLocation {
     private static final Logger LOG = Logger.getLogger(ClasspathLocation.class.getName());
 
-
+    /**
+     * Creates a new (local) location for classes.
+     *
+     * @param uri      The URI of the class path
+     * @param realm    The name of the realm to use
+     */
     public ClasspathLocation(URI uri, String realm) {
         super(uri, realm);
     }

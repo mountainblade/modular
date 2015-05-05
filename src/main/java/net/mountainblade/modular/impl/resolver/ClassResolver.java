@@ -7,7 +7,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 
 /**
- * Represents a resolver for classes.
+ * Represents a resolver for classes inside specific locations.
  *
  * @author spaceemotion
  * @version 1.0
