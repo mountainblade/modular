@@ -3,6 +3,9 @@ package net.mountainblade.modular.impl;
 /**
  * Represents a destroyable object.
  *
+ * <p>This is an abstract class instead of an interface since we only want
+ * to have protected access to the {@link #destroy() destroy} method.</p>
+ *
  * @author spaceemotion
  * @version 1.0
  */
