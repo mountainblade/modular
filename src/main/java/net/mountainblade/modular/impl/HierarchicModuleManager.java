@@ -15,8 +15,7 @@ public class HierarchicModuleManager extends BaseModuleManager {
 
 
     public HierarchicModuleManager(DefaultModuleManager parent) {
-        super(new HierarchicModuleRegistry(((ModuleRegistry) parent.getRegistry())),
-                newRealm(parent.getLoader().getRealm()));
+        super(new HierarchicModuleRegistry(parent.getRegistry()), newRealm(parent.getLoader().getRealm()));
 
         this.parent = parent;
     }

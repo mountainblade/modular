@@ -1,7 +1,6 @@
 package net.mountainblade.modular.impl;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Splitter;
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.THashSet;
 import net.mountainblade.modular.Filter;
@@ -20,8 +19,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -42,45 +41,25 @@ import java.util.zip.ZipInputStream;
  */
 public abstract class BaseModuleManager implements ModuleManager {
     private static final Logger LOG = Logger.getLogger(DefaultModuleManager.class.getName());
-    private static final ClassWorld CLASS_WORLD = new ClassWorld();
 
-    private static final String CLASS_PATH_SEPARATOR = System.getProperty("path.separator");
-    private static final String JAVA_CLASS_PATH = System.getProperty("java.class.path");
-    private static final List<String> SYSTEM_PATH = Splitter.on(CLASS_PATH_SEPARATOR).splitToList(JAVA_CLASS_PATH);
+    private static final ClassWorld CLASS_WORLD = new ClassWorld();
+    private static final ClassLoader CLASS_LOADER = BaseModuleManager.class.getClassLoader();
     private static final List<URI> LOCAL_CLASSPATH = new LinkedList<>();
     private static final Map<URI, Collection<String>> JAR_CACHE = new THashMap<>();
     private static final Collection<String> BLACKLIST = new THashSet<>();
 
     static {
-        Collections.addAll(BLACKLIST, "idea_rt.jar", "junit-rt.jar", ".git", ".idea");
+        Collections.addAll(BLACKLIST, ".git", ".idea");
 
-        // Get root class loader
-        ClassLoader loader = ClassLoader.getSystemClassLoader();
-        while (loader != null && loader.getParent() != null) {
-            loader = loader.getParent();
-        }
+        try {
+            final URL resource = ClassLoader.getSystemClassLoader().getResource(".");
 
-        // Add the system files to our "blacklist"
-        final Collection<String> system = new LinkedList<>();
-        if (loader != null && loader instanceof URLClassLoader) {
-            for (URL url : ((URLClassLoader) loader).getURLs()) {
-                system.add(url.getFile());
-            }
-        }
-
-        // Check if the remaining files actually belong to a JRE or JDK
-        loop: for (String aClass : SYSTEM_PATH) {
-            for (String blacklisted : BLACKLIST) {
-                if (aClass.contains(blacklisted)) {
-                    continue loop;
-                }
+            if (resource != null) {
+                LOCAL_CLASSPATH.clear();
+                LOCAL_CLASSPATH.add(resource.toURI());
             }
 
-            if (!aClass.contains("jre" + File.separatorChar) && !aClass.contains("jdk" + File.separatorChar) &&
-                    !system.contains(aClass)) {
-                LOCAL_CLASSPATH.add(new File(aClass).toURI());
-            }
-        }
+        } catch (URISyntaxException ignore) {}
     }
 
     private final Collection<Destroyable> destroyables;
@@ -484,7 +463,7 @@ public abstract class BaseModuleManager implements ModuleManager {
     public static ClassRealm newRealm(ClassRealm parent) {
         try {
             final String name = UUID.randomUUID().toString();
-            return parent != null ? parent.createChildRealm(name) : CLASS_WORLD.newRealm(name);
+            return parent != null ? parent.createChildRealm(name) : CLASS_WORLD.newRealm(name, CLASS_LOADER);
 
         } catch (DuplicateRealmException e) {
             // Hopefully this never happens... would be weird, right? Right?!?

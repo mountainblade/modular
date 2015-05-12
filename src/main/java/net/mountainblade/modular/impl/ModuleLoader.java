@@ -70,21 +70,29 @@ public final class ModuleLoader extends Destroyable {
 
         // Walk over each location first, then build the list of potential modules
         for (String className : classNames) {
+            Class<?> aClass;
+
             try {
-                Class<?> aClass = Class.forName(className, false, realm);
+                try {
+                    aClass = realm.loadClass(className);
 
-                // We can safely ignore any interfaces, since we only want to get implementations
-                if (isValidModuleClass(aClass)) {
-                    candidates.add((Class<? extends Module>) loadClass(className));
+                } catch (ClassNotFoundException e) {
+                    try {
+                        aClass = getClass().getClassLoader().loadClass(className);
+
+                    } catch (ClassNotFoundException e1) {
+                        LOG.log(Level.WARNING, "Could not load class: " + className, e1);
+                        continue;
+                    }
                 }
-
-            } catch (ClassNotFoundException e) {
-                LOG.log(Level.WARNING, "Could not find/load candidate class although it should exist: " + className, e);
-
             } catch (NoClassDefFoundError e) {
-                // This can happen if we're inside an IDE or a specific dependency is not loaded properly
-                // If possible, this should be fixed by shading the dependent classes into the JAR or folder
-                LOG.log(Level.WARNING, "Dependent class not found for class name: " + className, e);
+                LOG.log(Level.INFO, "Could not load class that was available at compile time for: " + className, e);
+                continue;
+            }
+
+            // We can safely ignore any interfaces, since we only want to get implementations
+            if (isValidModuleClass(aClass)) {
+                candidates.add((Class<? extends Module>) aClass);
             }
         }
 
@@ -132,7 +140,7 @@ public final class ModuleLoader extends Destroyable {
 
         try {
             // Instantiate module
-            Constructor<? extends Module> constructor = classEntry.getImplementation().getDeclaredConstructor();
+            final Constructor<? extends Module> constructor = classEntry.getImplementation().getDeclaredConstructor();
             constructor.setAccessible(true);
 
             module = constructor.newInstance();
@@ -184,17 +192,6 @@ public final class ModuleLoader extends Destroyable {
         registry.addModule(classEntry.getImplementation(), moduleEntry, true);
     }
 
-    public Class<?> loadClass(String className) throws ClassNotFoundException {
-        try {
-            return realm.loadClass(className);
-
-        } catch (ClassNotFoundException e) {
-            LOG.log(Level.WARNING, "Could not properly load class: " + className, e);
-        }
-
-        return getClass().getClassLoader().loadClass(className);
-    }
-
     public ClassEntry getClassEntry(Class<? extends Module> implClass) {
         // Early checking for null, against module, and if we already checked and saw that it's invalid
         if (implClass == null || Module.class.equals(implClass) || Implementation.Default.class.equals(implClass) ||
@@ -214,14 +211,14 @@ public final class ModuleLoader extends Destroyable {
             }
 
             // Return null for classes that don't have the annotation
-            Implementation implementation = implClass.getAnnotation(Implementation.class);
+            final Implementation implementation = implClass.getAnnotation(Implementation.class);
             if (implementation == null) {
                 INVALID_CACHE.add(implClass);
                 return null;
             }
 
             // Get correct module class
-            Class<? extends Module> module;
+            final Class<? extends Module> module;
 
             if (!implementation.module().equals(Implementation.Default.class)) {
                 // The developer already provided the wanted class so we'll gladly use that instead
@@ -266,7 +263,7 @@ public final class ModuleLoader extends Destroyable {
 
             // Even though it was an ignored one, maybe the parent wasn't ignored
             if (ignores.contains(anInterface)) {
-                Class<? extends Module> recursiveLookup = getModuleClassRecursively(anInterface);
+                final Class<? extends Module> recursiveLookup = getModuleClassRecursively(anInterface);
 
                 if (recursiveLookup != null) {
                     return recursiveLookup;
@@ -292,6 +289,7 @@ public final class ModuleLoader extends Destroyable {
         private final Class<? extends Module> implementation;
         private final Implementation annotation;
         private final Collection<Injector.Entry> dependencies;
+
 
         public ClassEntry(Class<? extends Module> module, Class<? extends Module> implementation,
                           Implementation annotation, Collection<Injector.Entry> dependencies) {
@@ -339,6 +337,7 @@ public final class ModuleLoader extends Destroyable {
             return "ClassEntry{module=" + module + ", implementation=" + implementation + ", annotation=" + annotation +
                     ", dependencies=" + dependencies + '}';
         }
+
     }
 
 }
