@@ -50,6 +50,7 @@ public abstract class BaseModuleManager implements ModuleManager {
     private static final List<String> SYSTEM_PATH = Splitter.on(CLASS_PATH_SEPARATOR).splitToList(JAVA_CLASS_PATH);
     private static final List<URI> LOCAL_CLASSPATH = new LinkedList<>();
     private static final Map<URI, Collection<String>> JAR_CACHE = new THashMap<>();
+    private static final String[] BLACKLIST = new String[] {"idea_rt.jar", "junit-rt.jar"};
 
     static {
         // Get root class loader
@@ -68,8 +69,16 @@ public abstract class BaseModuleManager implements ModuleManager {
 
         // Check if the remaining files actually belong to a JRE or JDK
         for (String aClass : SYSTEM_PATH) {
-            if (!aClass.contains("jre" + File.separatorChar) && !aClass.contains("jdk" + File.separatorChar) &&
-                    !system.contains(aClass)) {
+            boolean blocked = false;
+            for (String blacklisted : BLACKLIST) {
+                if (aClass.contains(blacklisted)) {
+                    blocked = true;
+                    break;
+                }
+            }
+
+            if (!blocked && !aClass.contains("jre" + File.separatorChar) &&
+                    !aClass.contains("jdk" + File.separatorChar) && !system.contains(aClass)) {
                 LOCAL_CLASSPATH.add(new File(aClass).toURI());
             }
         }
