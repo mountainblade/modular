@@ -19,7 +19,6 @@ import org.junit.runners.JUnit4;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.net.URI;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Iterator;
@@ -39,17 +38,17 @@ public class ModuleTest {
     @Rule
     public RepeatRule repeatRule = new RepeatRule();
 
-    @Test(timeout = 1000L)
+    @Test
     @Repeat(3) // Repeat because the topological sort is kind of random
     public void testModules() throws Exception {
-        URI exampleUri = UriHelper.of(ExampleModule.class.getPackage());
-        Stopwatch stopwatch = Stopwatch.createStarted();
+        final String packageName = ExampleModule.class.getPackage().getName();
+        final Stopwatch stopwatch = Stopwatch.createStarted();
 
         // Create new manager
-        DefaultModuleManager manager = new DefaultModuleManager();
+        final DefaultModuleManager manager = new DefaultModuleManager();
 
         // Load modules from our current package and "below"
-        Collection<Module> modules = manager.loadModules(exampleUri);
+        final Collection<Module> modules = manager.loadModules(packageName);
 
         // Stop the clock
         stopwatch.stop();
@@ -70,11 +69,11 @@ public class ModuleTest {
         System.out.println("Random number of the moment: " + manager.getModule(Example2Module.class).get().getNumber());
 
         // Check if we didn't get any new modules this time (two instances are not allowed)
-        Collection<Module> newModules = manager.loadModules(exampleUri);
+        final Collection<Module> newModules = manager.loadModules(packageName);
         Assert.assertEquals(modules.size(), newModules.size());
 
-        Iterator<Module> first = modules.iterator();
-        Iterator<Module> second = newModules.iterator();
+        final Iterator<Module> first = modules.iterator();
+        final Iterator<Module> second = newModules.iterator();
 
         while (second.hasNext() || first.hasNext()) {
             Module nextFirst = first.hasNext() ? first.next() : null;
@@ -86,15 +85,13 @@ public class ModuleTest {
         }
 
         // Check if we can have multiple instances running
-        ModuleManager manager2 = new DefaultModuleManager();
+        final ModuleManager manager2 = new DefaultModuleManager();
         manager2.provideSimple(manager.getModule(Example2Module.class).orNull());
-        Assert.assertEquals(2, manager2.loadModules(UriHelper.of(ExampleModule.class)).size());
+        Assert.assertNotNull(manager2.loadModule(ExampleModule.class));
 
         // Also check if the hierarchical / inherited management is working
-        HierarchicModuleManager hierarchicManager = new HierarchicModuleManager(manager);
-        Collection<Module> loaded = hierarchicManager.loadModules(UriHelper.of(Example3Module.class));
-
-        Assert.assertEquals("3rd module may have been loaded incorrectly", 1, loaded.size());
+        final HierarchicModuleManager hierarchicManager = new HierarchicModuleManager(manager);
+        Assert.assertNotNull(hierarchicManager.loadModule(Example3Module.class));
         Assert.assertFalse("The parent knows about the children!", manager.getModule(Example3Module.class).isPresent());
 
         // And shut down the systems (hierarchic also shuts down the normal one)
@@ -114,23 +111,27 @@ public class ModuleTest {
 
         final URL resource = this.getClass().getResource("/modular-demo-1.0-SNAPSHOT.jar");
         Assert.assertNotNull("couldn't find jar, be sure to run \"mvn package\" on the demo project first", resource);
-        final Collection<Module> modules = manager.loadModules(UriHelper.folderOf(resource.getFile(), "net.**"));
+
+        final Collection<Module> modules = manager.loadModules(UriHelper.folderOf(resource.getFile()), "net.");
         Assert.assertEquals(1, modules.size());
+
         manager.shutdown();
     }
 
     @Test
     public void testFilter() throws Exception {
-        Collection<Module> modules = new DefaultModuleManager().loadModules(UriHelper.everything(),
-                new Filter.AnnotationPresent(ItsAKeeper.class));
+        final DefaultModuleManager manager = new DefaultModuleManager();
+        final Collection<Module> modules = manager.loadModules("", new Filter.AnnotationPresent(ItsAKeeper.class));
 
         for (Module module : modules) {
             Assert.assertTrue("The Module is a spy!", module.getClass().equals(Example3Module.class));
         }
+
+        Assert.assertEquals(1, modules.size());
     }
 
     /**
-     * The third example module.
+     * The third example module, this time in-lined.
      *
      * @author spaceemotion
      * @version 1.0

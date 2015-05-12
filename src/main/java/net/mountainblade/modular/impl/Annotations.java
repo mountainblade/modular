@@ -19,7 +19,7 @@ public final class Annotations {
      * This is used when we want to return something, but it cannot be a "known" object. And since java does not allow
      * instantiation of the {@link java.lang.Void} type...
      */
-    public static final Object NOTHING = new Object();
+    private static final Object NOTHING = new Object();
 
 
     private Annotations() {

@@ -2,27 +2,22 @@ package net.mountainblade.modular.impl;
 
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.THashSet;
+import gnu.trove.set.hash.TLinkedHashSet;
 import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleManager;
 import net.mountainblade.modular.ModuleState;
 import net.mountainblade.modular.annotations.Implementation;
 import net.mountainblade.modular.annotations.Initialize;
 import net.mountainblade.modular.annotations.Inject;
-import net.mountainblade.modular.impl.location.ClassLocation;
-import net.mountainblade.modular.impl.location.JarClassLocation;
-import org.codehaus.plexus.classworlds.ClassWorld;
-import org.codehaus.plexus.classworlds.realm.NoSuchRealmException;
+import org.codehaus.plexus.classworlds.realm.ClassRealm;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Represents a loader for modules.
@@ -33,33 +28,29 @@ import java.util.regex.Pattern;
 public final class ModuleLoader extends Destroyable {
     private static final Logger LOG = Logger.getLogger(ModuleLoader.class.getName());
 
-    /** A cache for classes inside JAR containers */
-    private static final JarCache JAR_CACHE = new JarCache();
-
     /** A map containing all meta data about the indexed classes */
     private static final Map<Class<?>, ClassEntry> CLASS_CACHE = new THashMap<>();
 
     /** A set of classes that have been skipped as they contain no information (and should be skipped in the future) */
-    private static final Set<Class<?>> INVALID_CACHE = new THashSet<>();
+    private static final Collection<Class<?>> INVALID_CACHE = new THashSet<>();
 
-    /** The class world to load our classes much easier */
-    private final ClassWorld classWorld;
-
-    /** The registry we're getting the entries from */
+    private final ClassRealm realm;
     private final ModuleRegistry registry;
-
-    /** The injector to use during the loading process */
     private final Injector injector;
 
-    private final Set<Class<?>> ignores;
+    private final Collection<Class<?>> ignores;
 
 
-    public ModuleLoader(ClassWorld classWorld, ModuleRegistry registry, Injector injector) {
-        this.classWorld = classWorld;
+    public ModuleLoader(ClassRealm realm, ModuleRegistry registry, Injector injector) {
+        this.realm = realm;
         this.registry = registry;
         this.injector = injector;
 
         ignores = new THashSet<>();
+    }
+
+    public ClassRealm getRealm() {
+        return realm;
     }
 
     /**
@@ -72,6 +63,62 @@ public final class ModuleLoader extends Destroyable {
         return ignores.add(ignore);
     }
 
+    @SuppressWarnings("unchecked")
+    Collection<ClassEntry> getCandidates(Collection<String> classNames) {
+        final Collection<Class<? extends Module>> candidates = new TLinkedHashSet<>();
+        final Collection<ClassEntry> moduleClasses = new LinkedList<>();
+
+        // Walk over each location first, then build the list of potential modules
+        for (String className : classNames) {
+            try {
+                Class<?> aClass = Class.forName(className, false, realm);
+
+                // We can safely ignore any interfaces, since we only want to get implementations
+                if (isValidModuleClass(aClass)) {
+                    candidates.add((Class<? extends Module>) loadClass(className));
+                }
+
+            } catch (ClassNotFoundException e) {
+                LOG.log(Level.WARNING, "Could not find/load candidate class although it should exist: " + className, e);
+
+            } catch (NoClassDefFoundError e) {
+                // This can happen if we're inside an IDE or a specific dependency is not loaded properly
+                // If possible, this should be fixed by shading the dependent classes into the JAR or folder
+                LOG.log(Level.WARNING, "Dependent class not found for class name: " + className, e);
+            }
+        }
+
+        // Go through each candidate to search if we got one that got overwritten by a subclass, that's the sole purpose
+        // of all this ordering and looping - to detect if an implementation became obsolete by a sub-implementation
+        for (Class<? extends Module> candidate : candidates) {
+            if (candidateIsObsolete(candidate, candidates)) {
+                continue;
+            }
+
+            // Try to get class entry and add to our classes
+            final ClassEntry classEntry = getClassEntry(candidate);
+            if (classEntry != null) {
+                moduleClasses.add(classEntry);
+            }
+        }
+
+        return moduleClasses;
+    }
+
+    boolean isValidModuleClass(Class<?> aClass) {
+        return !aClass.isInterface() && !Module.class.equals(aClass) && Module.class.isAssignableFrom(aClass);
+    }
+
+    private boolean candidateIsObsolete(Class<? extends Module> candidate, Collection<Class<? extends Module>> others) {
+        for (Class<? extends Module> other : others) {
+            if (other.getSuperclass() == candidate) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public Module loadModule(ModuleManager moduleManager, ClassEntry classEntry) {
         // Try to get "from cache" first. We do not allow two modules be activated at the same time, so lets use that
         Module module = registry.getModule(classEntry.getImplementation());
@@ -80,10 +127,8 @@ public final class ModuleLoader extends Destroyable {
         }
 
         // Seems like we haven't loaded that module before, so let's get started
-        Implementation annotation = classEntry.getAnnotation();
-
-        ModuleInformationImpl information = new ModuleInformationImpl(annotation.version(), annotation.authors());
-        ModuleRegistry.Entry moduleEntry = registry.createEntry(classEntry.getModule(), information);
+        final ModuleInformationImpl information = new ModuleInformationImpl(classEntry.getAnnotation());
+        final ModuleRegistry.Entry moduleEntry = registry.createEntry(classEntry.getModule(), information);
 
         try {
             // Instantiate module
@@ -139,14 +184,12 @@ public final class ModuleLoader extends Destroyable {
         registry.addModule(classEntry.getImplementation(), moduleEntry, true);
     }
 
-    public Class<?> loadClass(ClassLocation location, String className) throws ClassNotFoundException {
-        if (location != null) {
-            try {
-                return classWorld.getRealm(location.getRealm()).loadClass(className);
+    public Class<?> loadClass(String className) throws ClassNotFoundException {
+        try {
+            return realm.loadClass(className);
 
-            } catch (ClassNotFoundException | NoSuchRealmException e) {
-                LOG.log(Level.WARNING, "Could not properly load class from realm: " + location.getUri(), e);
-            }
+        } catch (ClassNotFoundException e) {
+            LOG.log(Level.WARNING, "Could not properly load class: " + className, e);
         }
 
         return getClass().getClassLoader().loadClass(className);
@@ -212,64 +255,9 @@ public final class ModuleLoader extends Destroyable {
     }
 
     @SuppressWarnings("unchecked")
-    Collection<ClassEntry> getCandidatesWithPattern(Pattern regex, Collection<ClassLocation> located) {
-        final Collection<Class<? extends Module>> candidates = new LinkedList<>();
-        final Collection<ClassEntry> moduleClasses = new LinkedList<>();
-
-        // Walk over each location first, then build the list of potential modules
-        for (ClassLocation location : located) {
-            Collection<String> classNames = findModulesIn(location);
-
-            // Check our possible modules
-            for (String className : classNames) {
-                if (regex != null) {
-                    Matcher matcher = regex.matcher(className);
-
-                    if (!matcher.matches()) {
-                        continue;
-                    }
-                }
-
-                try {
-                    candidates.add((Class<? extends Module>) loadClass(location, className));
-
-                } catch (ClassNotFoundException e) {
-                    LOG.log(Level.WARNING, "Could not properly load module candidate", e);
-                }
-            }
-        }
-
-        // Go through each candidate to search if we got one that got overwritten by a subclass, that's the sole purpose
-        // of all this ordering and looping - to detect if an implementation became obsolete by a sub-implementation
-        for (Class<? extends Module> candidate : candidates) {
-            if (candidateIsObsolete(candidate, candidates)) {
-                continue;
-            }
-
-            // Try to get class entry and add to our classes
-            ClassEntry classEntry = getClassEntry(candidate);
-            if (classEntry != null) {
-                moduleClasses.add(classEntry);
-            }
-        }
-
-        return moduleClasses;
-    }
-
-    private boolean candidateIsObsolete(Class<? extends Module> candidate, Collection<Class<? extends Module>> others) {
-        for (Class<? extends Module> other : others) {
-            if (other.getSuperclass() == candidate) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    @SuppressWarnings("unchecked")
     private Class<? extends Module> getModuleClassRecursively(Class<?> aClass) {
         // Let's check interfaces first...
-        Class<?>[] interfaces = aClass.getInterfaces();
+        final Class<?>[] interfaces = aClass.getInterfaces();
 
         for (Class<?> anInterface : interfaces) {
             if (!Module.class.isAssignableFrom(anInterface)) {
@@ -296,47 +284,6 @@ public final class ModuleLoader extends Destroyable {
 
         // We still didn't find a proper module class search through our parents (superclass of superclass of super...)
         return getModuleClassRecursively(aClass.getSuperclass());
-    }
-
-    private Collection<String> findModulesIn(ClassLocation location) {
-        LinkedList<String> subClasses = new LinkedList<>();
-        JarCache.Entry cacheEntry = null;
-
-        if (location instanceof JarClassLocation) {
-            cacheEntry = JAR_CACHE.getEntry(location.getUri());
-        }
-
-        try {
-            ClassLoader classLoader = classWorld.getRealm(location.getRealm());
-            Collection<String> classNames = location.listClassNames();
-
-            for (String className : classNames) {
-                try {
-                    Class<?> aClass = Class.forName(className, false, classLoader);
-
-                    // We can safely ignore any interfaces, since we only want to get implementations
-                    if (aClass.isInterface()) {
-                        continue;
-                    }
-
-                    if (!Module.class.equals(aClass) && Module.class.isAssignableFrom(aClass)) {
-                        subClasses.add(className);
-                    }
-
-                } catch (ClassNotFoundException e) {
-                    LOG.log(Level.WARNING, "Could not find class although it should exist: " + className, e);
-                }
-            }
-
-        } catch (NoSuchRealmException e) {
-            LOG.log(Level.WARNING, "Could not find realm", e);
-        }
-
-        if (cacheEntry != null) {
-            cacheEntry.getSubclasses().put(Module.class.getCanonicalName(), subClasses);
-        }
-
-        return subClasses;
     }
 
 
@@ -389,12 +336,8 @@ public final class ModuleLoader extends Destroyable {
 
         @Override
         public String toString() {
-            return "ClassEntry{" +
-                    "module=" + module +
-                    ", implementation=" + implementation +
-                    ", annotation=" + annotation +
-                    ", dependencies=" + dependencies +
-                    '}';
+            return "ClassEntry{module=" + module + ", implementation=" + implementation + ", annotation=" + annotation +
+                    ", dependencies=" + dependencies + '}';
         }
     }
 

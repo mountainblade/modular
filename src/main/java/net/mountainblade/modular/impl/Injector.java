@@ -63,7 +63,6 @@ public final class Injector extends Destroyable {
         supports.add(new RegistryEntry(entry, classToMatch, exactMatch));
     }
 
-
     public Collection<Entry> discover(Class<? extends Module> implementationClass) {
         Collection<Entry> entries = cache.get(implementationClass);
 
@@ -98,17 +97,17 @@ public final class Injector extends Destroyable {
             }
 
             // Check inject annotation
-            Inject annotation = field.getAnnotation(Inject.class);
+            final Inject annotation = field.getAnnotation(Inject.class);
             if (annotation == null) {
                 continue;
             }
 
             // Fetch dependency and do some checks beforehand
-            Class<?> fieldType = field.getType();
+            final Class<?> fieldType = field.getType();
 
             try {
                 if (fieldType.equals(Module.class)) {
-                    throw new InjectFailedException("Cannot inject field with raw Material type");
+                    throw new InjectFailedException("Cannot inject field with raw Module type");
                 }
 
                 if (fieldType.equals(implementationClass.getClass())) {
@@ -116,11 +115,11 @@ public final class Injector extends Destroyable {
                 }
 
                 // Loop through our supports in reverse order
-                ListIterator<RegistryEntry> iterator = supports.listIterator(supports.size());
+                final ListIterator<RegistryEntry> iterator = supports.listIterator(supports.size());
                 boolean added = false;
 
                 while (iterator.hasPrevious()) {
-                    RegistryEntry support = iterator.previous();
+                    final RegistryEntry support = iterator.previous();
 
                     // Check if we got a match
                     if (!(support.exactMatch ? support.classEntry.equals(fieldType) :
@@ -239,8 +238,12 @@ public final class Injector extends Destroyable {
 
         @Override
         protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
-            Logger logger = Logger.getLogger(module.getClass().getName());
-            moduleEntry.setLogger(logger);
+            Logger logger = moduleEntry.getLogger();
+
+            if (logger == null) {
+                logger = Logger.getLogger(module.getClass().getName());
+                moduleEntry.setLogger(logger);
+            }
 
             return injectField(module, logger);
         }
@@ -278,41 +281,32 @@ public final class Injector extends Destroyable {
         @Override
         @SuppressWarnings("unchecked")
         protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
-            Class<?> fieldType = getField().getType();
+            final Class<?> fieldType = getField().getType();
 
-            if (fieldType.equals(Module.class)) {
-                LOG.log(Level.WARNING, "Cannot inject field with raw Material type");
+            if (!Module.class.isAssignableFrom(fieldType)) {
                 return false;
             }
 
-            if (fieldType.equals(getModule().getClass())) {
-                LOG.log(Level.WARNING, "Cannot inject field with itself (Why would you want to do that?)");
-                return false;
-            }
+            Class<?> superclass = fieldType;
+            Module dependency;
 
-            if (Module.class.isAssignableFrom(fieldType)) {
-                Class<?> superclass = fieldType;
-                Module dependency;
+            do {
+                dependency = registry.getModule((Class<? extends Module>) superclass);
 
-                do {
-                    dependency = registry.getModule((Class<? extends Module>) superclass);
+                // Exit when the superclass is not a module anymore
+                final Class<?> fieldTypeSuperclass = fieldType.getSuperclass();
+                if (fieldTypeSuperclass == null || !Module.class.isAssignableFrom(fieldTypeSuperclass)) {
+                    break;
+                }
 
-                    // Exit when the superclass is not a module anymore
-                    Class<?> fieldTypeSuperclass = fieldType.getSuperclass();
-                    if (fieldTypeSuperclass == null || !Module.class.isAssignableFrom(fieldTypeSuperclass)) {
-                        break;
-                    }
+                // Continue with new superclass
+                superclass = fieldTypeSuperclass;
 
-                    // Continue with new superclass
-                    superclass = fieldTypeSuperclass;
+            } while (dependency == null);
 
-                } while (dependency == null);
+            // Inject the dependency
+            return injectField(module, dependency);
 
-                // Inject the dependency
-                return injectField(module, dependency);
-            }
-
-            return false;
         }
 
     }

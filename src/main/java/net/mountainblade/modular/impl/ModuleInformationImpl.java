@@ -2,6 +2,7 @@ package net.mountainblade.modular.impl;
 
 import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.ModuleState;
+import net.mountainblade.modular.annotations.Implementation;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -14,6 +15,10 @@ class ModuleInformationImpl implements ModuleInformation {
 
     private ModuleState state;
 
+
+    ModuleInformationImpl(Implementation annotation) {
+        this(annotation.version(), annotation.authors());
+    }
 
     ModuleInformationImpl(String version, String... authors) {
         this.version = version;

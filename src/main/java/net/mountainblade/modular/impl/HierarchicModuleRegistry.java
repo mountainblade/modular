@@ -20,7 +20,7 @@ import java.util.Set;
  */
 class HierarchicModuleRegistry extends ModuleRegistry {
 
-    HierarchicModuleRegistry(DefaultModuleRegistry parent) {
+    HierarchicModuleRegistry(ModuleRegistry parent) {
         super(new CombinedTHashMap<>(parent.getRegistry()), new CombinedCollection<Module>(parent));
     }
 
@@ -43,7 +43,7 @@ class HierarchicModuleRegistry extends ModuleRegistry {
         private final Set<E> parent;
 
 
-        public CombinedCollection(DefaultModuleRegistry parent) {
+        public CombinedCollection(ModuleRegistry parent) {
             this.parent = ((Set<E>) parent.getModuleCollection());
         }
 

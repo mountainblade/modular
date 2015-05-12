@@ -2,6 +2,7 @@ package net.mountainblade.modular;
 
 import com.google.common.base.Optional;
 
+import java.io.File;
 import java.net.URI;
 import java.util.Collection;
 
@@ -38,6 +39,15 @@ public interface ModuleManager extends Module {
      * @return The collection of all successfully loaded modules.
      */
     Collection<Module> loadModules(URI uri, Filter... filters);
+
+    // anything, except classpath
+    Collection<Module> loadModules(File file, Filter... filters);
+
+    // package names
+    Collection<Module> loadModules(String resource, Filter... filters);
+
+    // specific class
+    <M extends Module> M loadModule(Class<M> moduleClass, Filter... filters);
 
     /**
      * Gets a specific module by its class.
