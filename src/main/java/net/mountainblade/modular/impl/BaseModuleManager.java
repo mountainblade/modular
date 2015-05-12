@@ -49,7 +49,7 @@ public abstract class BaseModuleManager implements ModuleManager {
     private static final List<String> SYSTEM_PATH = Splitter.on(CLASS_PATH_SEPARATOR).splitToList(JAVA_CLASS_PATH);
     private static final List<URI> LOCAL_CLASSPATH = new LinkedList<>();
     private static final Map<URI, Collection<String>> JAR_CACHE = new THashMap<>();
-    private static final Collection<String> BLACKLIST = new THashSet();
+    private static final Collection<String> BLACKLIST = new THashSet<>();
 
     static {
         Collections.addAll(BLACKLIST, "idea_rt.jar", "junit-rt.jar", ".git", ".idea");
