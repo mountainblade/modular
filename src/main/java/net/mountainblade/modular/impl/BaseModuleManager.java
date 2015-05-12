@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Collection;
@@ -50,9 +49,11 @@ public abstract class BaseModuleManager implements ModuleManager {
     private static final List<String> SYSTEM_PATH = Splitter.on(CLASS_PATH_SEPARATOR).splitToList(JAVA_CLASS_PATH);
     private static final List<URI> LOCAL_CLASSPATH = new LinkedList<>();
     private static final Map<URI, Collection<String>> JAR_CACHE = new THashMap<>();
-    private static final String[] BLACKLIST = new String[] {"idea_rt.jar", "junit-rt.jar"};
+    private static final Collection<String> BLACKLIST = new THashSet();
 
     static {
+        Collections.addAll(BLACKLIST, "idea_rt.jar", "junit-rt.jar", ".git", ".idea");
+
         // Get root class loader
         ClassLoader loader = ClassLoader.getSystemClassLoader();
         while (loader != null && loader.getParent() != null) {
@@ -68,17 +69,15 @@ public abstract class BaseModuleManager implements ModuleManager {
         }
 
         // Check if the remaining files actually belong to a JRE or JDK
-        for (String aClass : SYSTEM_PATH) {
-            boolean blocked = false;
+        loop: for (String aClass : SYSTEM_PATH) {
             for (String blacklisted : BLACKLIST) {
                 if (aClass.contains(blacklisted)) {
-                    blocked = true;
-                    break;
+                    continue loop;
                 }
             }
 
-            if (!blocked && !aClass.contains("jre" + File.separatorChar) &&
-                    !aClass.contains("jdk" + File.separatorChar) && !system.contains(aClass)) {
+            if (!aClass.contains("jre" + File.separatorChar) && !aClass.contains("jdk" + File.separatorChar) &&
+                    !system.contains(aClass)) {
                 LOCAL_CLASSPATH.add(new File(aClass).toURI());
             }
         }
@@ -205,13 +204,6 @@ public abstract class BaseModuleManager implements ModuleManager {
     public Collection<Module> loadModules(Collection<URI> uris, String root, Filter... filters) {
         final LinkedList<URI> copy = new LinkedList<>(uris);
 
-        // Add the URIs to our realm first, so the loader can find it later on
-        for (URI uri : copy) {
-            if (!addUriToRealm(uri)) {
-                return Collections.emptyList();
-            }
-        }
-
         // 1. Find modules using the URI
         final THashSet<String> names = new THashSet<>();
         final Collection<ModuleLoader.ClassEntry> candidates = loader.getCandidates(getClassNames(copy, root, names));
@@ -292,15 +284,6 @@ public abstract class BaseModuleManager implements ModuleManager {
         }
 
         return modules;
-    }
-
-    private URI getRealUri(URI original, String root) {
-        try {
-            return new URI(original.toString().replace(root, ""));
-
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException(e);
-        }
     }
 
     private boolean addUriToRealm(URI uri) {
@@ -398,15 +381,22 @@ public abstract class BaseModuleManager implements ModuleManager {
     }
 
     private void walkDirectory(String rootPath, File parent, String packageName, Collection<String> classNames) {
-        final File[] listFiles = parent.listFiles();
+        final File[] listFiles = parent.isDirectory() ? parent.listFiles() : null;
 
         if (listFiles != null) {
-            for (File file : listFiles) {
+            loop: for (File file : listFiles) {
+                final String name = file.getName();
+
+                for (String blacklisted : BLACKLIST) {
+                    if (name.equalsIgnoreCase(blacklisted)) {
+                        continue loop;
+                    }
+                }
+
                 // Check if the current file is a directory, and if it is, check if its a classpath (and thus a root)
                 if (file.isDirectory()) {
-                    walkDirectory((rootPath == null && classpath.contains(parent.toURI())) ?
-                            parent.getAbsolutePath() : rootPath,
-                            file, packageName, classNames);
+                    walkDirectory(classpath.contains(parent.toURI()) ?
+                            parent.getAbsolutePath() : rootPath, file, packageName, classNames);
                     continue;
                 }
 
@@ -418,7 +408,6 @@ public abstract class BaseModuleManager implements ModuleManager {
                 }
 
                 // Check for JAR files and do the whole thing over again
-                final String name = file.getName();
                 final URI uri = file.toURI();
                 if (name.endsWith(".jar")) {
                     getClassNames(Collections.singleton(uri), packageName, classNames);
@@ -501,6 +490,10 @@ public abstract class BaseModuleManager implements ModuleManager {
             // Hopefully this never happens... would be weird, right? Right?!?
             throw new RuntimeException("Created duplicate realm even though we're using random UUIDs!", e);
         }
+    }
+
+    public static void blacklist(String name) {
+        BLACKLIST.add(name);
     }
 
 }

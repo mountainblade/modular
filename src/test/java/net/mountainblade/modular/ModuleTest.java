@@ -7,11 +7,13 @@ import net.mountainblade.modular.annotations.Inject;
 import net.mountainblade.modular.examples.Example2Module;
 import net.mountainblade.modular.examples.Example2ModuleImpl;
 import net.mountainblade.modular.examples.ExampleModule;
+import net.mountainblade.modular.impl.BaseModuleManager;
 import net.mountainblade.modular.impl.DefaultModuleManager;
 import net.mountainblade.modular.impl.HierarchicModuleManager;
 import net.mountainblade.modular.junit.Repeat;
 import net.mountainblade.modular.junit.RepeatRule;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,6 +39,11 @@ public class ModuleTest {
 
     @Rule
     public RepeatRule repeatRule = new RepeatRule();
+
+    @Before
+    public void setUp() throws Exception {
+        BaseModuleManager.blacklist("demo");
+    }
 
     @Test
     @Repeat(3) // Repeat because the topological sort is kind of random
