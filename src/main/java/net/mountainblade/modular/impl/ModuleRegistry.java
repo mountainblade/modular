@@ -142,11 +142,8 @@ public class ModuleRegistry extends Destroyable {
 
         @Override
         public String toString() {
-            return "Entry{" +
-                    "information=" + information +
-                    ", moduleClass=" + moduleClass +
-                    ", module=" + module +
-                    '}';
+            return "Entry{information=" + information + ", moduleClass=" + moduleClass +
+                    ", module=" + module + '}';
         }
 
     }

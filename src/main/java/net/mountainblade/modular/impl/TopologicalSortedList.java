@@ -82,7 +82,7 @@ public class TopologicalSortedList<E> extends TLinkedList<TopologicalSortedList.
         // Check to see if all edges are removed
         for (Node n : allNodes) {
             if (!n.inEdges.isEmpty() || !n.outerEdges.isEmpty()) {
-                throw new CycleException("Cycle found in list: " + this.toString());
+                throw new CycleException("Cycle found in list: " + this);
             }
         }
     }

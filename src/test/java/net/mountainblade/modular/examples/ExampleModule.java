@@ -4,12 +4,6 @@ import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleManager;
 import net.mountainblade.modular.annotations.*;
 
-/**
- * Represents the ExampleModule.
- *
- * @author spaceemotion
- * @version 1.0
- */
 @Implementation
 public class ExampleModule implements Module {
     public static final String PREFIX = '[' + ExampleModule.class.getSimpleName() + "] ";

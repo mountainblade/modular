@@ -130,7 +130,7 @@ public abstract class BaseModuleManager implements ModuleManager {
 
         // Inject dependencies if specified
         if (inject) {
-            loader.injectAndInitialize(this, module, information, moduleEntry);
+            loader.injectAndInitialize(this, module, information, moduleEntry, loader);
         }
 
         // Register module
@@ -216,26 +216,24 @@ public abstract class BaseModuleManager implements ModuleManager {
 
             for (Injector.Entry dependencyEntry : classEntry.getDependencies()) {
                 // Skip the ones we don't need
-                if (!(dependencyEntry instanceof Injector.ModuleEntry)) {
+                final Class<? extends Module> dependency = dependencyEntry.getModule();
+                if (dependency == null || dependency.equals(classEntry.getImplementation())) {
                     continue;
                 }
 
-                final Class<? extends Module> dependency = ((Injector.ModuleEntry) dependencyEntry).getDependency();
-                ModuleLoader.ClassEntry depClassEntry = loader.getClassEntry(dependency);
-
-                if (depClassEntry != null) {
-                    TopologicalSortedList.Node<ModuleLoader.ClassEntry> depNode = nodes.get(depClassEntry);
-
-                    if (depNode == null) {
-                        depNode = sortedCandidates.addNode(depClassEntry);
-                        nodes.put(depClassEntry, depNode);
-                    }
-
-                    depNode.isRequiredBefore(node);
+                final ModuleLoader.ClassEntry depClassEntry = loader.getClassEntry(dependency);
+                if (depClassEntry == null) {
+                    LOG.warning("Could not get class entry for dependency: " + dependency);
                     continue;
                 }
 
-                LOG.warning("Could not get class entry for dependency: " + dependency);
+                TopologicalSortedList.Node<ModuleLoader.ClassEntry> depNode = nodes.get(depClassEntry);
+                if (depNode == null) {
+                    depNode = sortedCandidates.addNode(depClassEntry);
+                    nodes.put(depClassEntry, depNode);
+                }
+
+                depNode.isRequiredBefore(node);
             }
         }
 

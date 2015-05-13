@@ -5,6 +5,7 @@ import net.mountainblade.modular.ModuleManager;
 import net.mountainblade.modular.annotations.Implementation;
 import net.mountainblade.modular.annotations.Initialize;
 import net.mountainblade.modular.annotations.Inject;
+import org.junit.Assert;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -19,25 +20,47 @@ import java.util.logging.Logger;
 @Implementation(version = Example2ModuleImpl.VERSION, authors = {Example2ModuleImpl.AUTHOR})
 public class Example2ModuleImpl implements Example2Module {
     public static final String AUTHOR = "spaceemotion";
-    public static final String VERSION = "1.0.2a";
+    public static final String VERSION = "1.0.2-alpha";
 
     @Inject
     private Logger log;
 
     @Inject
-    private ModuleInformation information;
+    private ModuleInformation local;
+
+    @Inject(from = Example3Module.class)
+    private ModuleInformation remote;
+
+    private boolean successfulStart;
 
 
     @Initialize
     public void init(ModuleManager moduleManager) {
+        Assert.assertNotNull(log);
         log.info("Hi from an interface-implementation module!");
-        log.info("This module was created by " + Arrays.toString(information.getAuthors()) + " and is running version "
-                        + information.getVersion());
+
+        Assert.assertNotNull(local);
+        Assert.assertNotNull(remote);
+        Assert.assertNotEquals(local, remote);
+        Assert.assertArrayEquals(local.getAuthors(), new String[]{Example2ModuleImpl.AUTHOR});
+        Assert.assertEquals(local.getVersion().toString(), Example2ModuleImpl.VERSION);
+
+        log.info("This module is currently " + local.getState() + ", was created by " +
+                Arrays.toString(local.getAuthors()) + " and is running version " + local.getVersion());
+        log.info("The first module is currently " + remote.getState() +
+                ", was created by " + Arrays.toString(remote.getAuthors()) +
+                " and is running version " + remote.getVersion());
+
+        successfulStart = true;
     }
 
     @Override
     public int getNumber() {
         return new Random().nextInt();
+    }
+
+    public boolean wasSuccessful() {
+        return successfulStart;
     }
 
 }

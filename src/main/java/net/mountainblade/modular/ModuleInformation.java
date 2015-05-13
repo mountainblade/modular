@@ -22,7 +22,7 @@ public interface ModuleInformation {
      *
      * @return The version string
      */
-    String getVersion();
+    Version getVersion();
 
     /**
      * Gets the current state of the module.

@@ -25,7 +25,7 @@ public final class Injector extends Destroyable {
     private static final Logger LOG = Logger.getLogger(Injector.class.getName());
 
     private final Map<Class<? extends Module>, Collection<Entry>> cache;
-    private final List<RegistryEntry> supports;
+    private final List<Support> supports;
 
     private final ModuleRegistry registry;
 
@@ -54,13 +54,13 @@ public final class Injector extends Destroyable {
             @Override
             @SuppressWarnings("unchecked")
             public Entry construct(Inject annotation, Class<? extends Module> module, Field field) {
-                return new ModuleEntry(annotation, module, field, (Class<? extends Module>) field.getType());
+                return new ModuleEntry(annotation, (Class<? extends Module>) field.getType(), field);
             }
         }, Module.class, false);
     }
 
     public void addSupport(EntryConstructor entry, Class classToMatch, boolean exactMatch) {
-        supports.add(new RegistryEntry(entry, classToMatch, exactMatch));
+        supports.add(new Support(entry, classToMatch, exactMatch));
     }
 
     public Collection<Entry> discover(Class<? extends Module> implementationClass) {
@@ -89,7 +89,6 @@ public final class Injector extends Destroyable {
 
     @SuppressWarnings("unchecked")
     private void discover(Class<? extends Module> implementationClass, Collection<Entry> entries, Field[] fields) {
-        // Loop through the fields
         for (Field field : fields) {
             // We do not want static fields
             if (Modifier.isStatic(field.getModifiers())) {
@@ -106,20 +105,13 @@ public final class Injector extends Destroyable {
             final Class<?> fieldType = field.getType();
 
             try {
-                if (fieldType.equals(Module.class)) {
-                    throw new InjectFailedException("Cannot inject field with raw Module type");
-                }
+                checkModuleField(implementationClass, fieldType);
 
-                if (fieldType.equals(implementationClass.getClass())) {
-                    throw new InjectFailedException("Cannot inject field with itself (Why would you do that?)");
-                }
-
-                // Loop through our supports in reverse order
-                final ListIterator<RegistryEntry> iterator = supports.listIterator(supports.size());
+                // Loop through our supports in reverse order to account for class overwrites
                 boolean added = false;
 
-                while (iterator.hasPrevious()) {
-                    final RegistryEntry support = iterator.previous();
+                for (ListIterator<Support> iterator = supports.listIterator(supports.size()); iterator.hasPrevious();) {
+                    final Support support = iterator.previous();
 
                     // Check if we got a match
                     if (!(support.exactMatch ? support.classEntry.equals(fieldType) :
@@ -128,7 +120,13 @@ public final class Injector extends Destroyable {
                     }
 
                     // We found an injector, let's use that
-                    entries.add(support.constructor.construct(annotation, implementationClass, field));
+                    final Class<? extends Module> from = annotation.from();
+                    final boolean useFrom = !from.equals(Inject.Current.class);
+                    if (useFrom) {
+                        checkModuleField(implementationClass, from);
+                    }
+
+                    entries.add(support.constructor.construct(annotation, useFrom ? from : implementationClass, field));
                     added = true;
                 }
 
@@ -143,17 +141,24 @@ public final class Injector extends Destroyable {
         }
     }
 
-    public void inject(ModuleRegistry.Entry moduleEntry, Module implementation) throws InjectFailedException {
-        Class<? extends Module> implementationClass = implementation.getClass();
-        Collection<Entry> entries = discover(implementationClass);
+    private void checkModuleField(Class<? extends Module> implementationClass, Class<?> fieldType)
+            throws InjectFailedException {
+        if (fieldType.equals(Module.class)) {
+            throw new InjectFailedException("Cannot inject field with raw Module type");
+        }
+
+        if (fieldType.equals(implementationClass.getClass())) {
+            throw new InjectFailedException("Cannot inject field with itself (Why would you do that?)");
+        }
+    }
+
+    public void inject(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader)
+            throws InjectFailedException {
+        final Class<? extends Module> implementationClass = module.getClass();
 
         // Loop through the entries and inject the dependencies
-        for (Entry entry : entries) {
-            if (!entry.getModule().equals(implementationClass)) {
-                continue;
-            }
-
-            if (!entry.apply(moduleEntry, implementation)) {
+        for (Entry entry : discover(implementationClass)) {
+            if (!entry.apply(moduleEntry, module, loader)) {
                 throw new InjectFailedException("Failed to inject dependencies: " + entry.getModule());
             }
         }
@@ -165,13 +170,13 @@ public final class Injector extends Destroyable {
     }
 
 
-    private static class RegistryEntry {
+    private static class Support {
         private final EntryConstructor constructor;
         private final Class classEntry;
         private final boolean exactMatch;
 
 
-        private RegistryEntry(EntryConstructor constructor, Class classEntry, boolean exactMatch) {
+        private Support(EntryConstructor constructor, Class classEntry, boolean exactMatch) {
             this.constructor = constructor;
             this.exactMatch = exactMatch;
             this.classEntry = classEntry;
@@ -198,26 +203,25 @@ public final class Injector extends Destroyable {
             this.field = field;
         }
 
-        public Class<? extends Module> getModule() {
+        public final Class<? extends Module> getModule() {
             return module;
         }
 
-        public Inject getAnnotation() {
+        public final Inject getAnnotation() {
             return annotation;
         }
 
-        public Field getField() {
+        public final Field getField() {
             return field;
         }
 
-        protected abstract boolean apply(ModuleRegistry.Entry moduleEntry, Module module);
+        protected abstract boolean apply(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader);
 
         protected boolean injectField(Module module, Object object) {
             if (object != null) {
                 try {
                     field.setAccessible(true);
-                    getField().set(module, object);
-
+                    field.set(module, object);
                     return true;
 
                 } catch (IllegalAccessException e) {
@@ -237,7 +241,7 @@ public final class Injector extends Destroyable {
         }
 
         @Override
-        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
+        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader) {
             Logger logger = moduleEntry.getLogger();
 
             if (logger == null) {
@@ -253,48 +257,34 @@ public final class Injector extends Destroyable {
     public final class InformationEntry extends Entry {
 
         protected InformationEntry(Inject annotation, Class<? extends Module> module, Field field) {
-            super("information object", annotation, module, field);
+            super("module information", annotation, module, field);
         }
 
         @Override
-        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
-            return injectField(module, moduleEntry.getInformation());
+        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader) {
+            return injectField(module, (!getAnnotation().from().equals(Inject.Current.class) ?
+                    registry.getEntry(getModule()) : moduleEntry).getInformation());
         }
 
     }
 
     public final class ModuleEntry extends Entry {
-        private final Class<? extends Module> dependency;
 
-
-        protected ModuleEntry(Inject annotation, Class<? extends Module> module, Field field,
-                              Class<? extends Module> dependency) {
+        protected ModuleEntry(Inject annotation, Class<? extends Module> module, Field field) {
             super("module dependency", annotation, module, field);
-
-            this.dependency = dependency;
-        }
-
-        public Class<? extends Module> getDependency() {
-            return dependency;
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module) {
-            final Class<?> fieldType = getField().getType();
-
-            if (!Module.class.isAssignableFrom(fieldType)) {
-                return false;
-            }
-
-            Class<?> superclass = fieldType;
+        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader) {
+            Class<?> superclass = getField().getType();
             Module dependency;
 
             do {
                 dependency = registry.getModule((Class<? extends Module>) superclass);
 
                 // Exit when the superclass is not a module anymore
-                final Class<?> fieldTypeSuperclass = fieldType.getSuperclass();
+                final Class<?> fieldTypeSuperclass = superclass.getSuperclass();
                 if (fieldTypeSuperclass == null || !Module.class.isAssignableFrom(fieldTypeSuperclass)) {
                     break;
                 }
@@ -304,9 +294,7 @@ public final class Injector extends Destroyable {
 
             } while (dependency == null);
 
-            // Inject the dependency
             return injectField(module, dependency);
-
         }
 
     }

@@ -70,29 +70,20 @@ public final class ModuleLoader extends Destroyable {
 
         // Walk over each location first, then build the list of potential modules
         for (String className : classNames) {
-            Class<?> aClass;
-
             try {
-                try {
-                    aClass = realm.loadClass(className);
+                final Class<?> aClass = realm.loadClass(className);
 
-                } catch (ClassNotFoundException e) {
-                    try {
-                        aClass = getClass().getClassLoader().loadClass(className);
-
-                    } catch (ClassNotFoundException e1) {
-                        LOG.log(Level.WARNING, "Could not load class: " + className, e1);
-                        continue;
-                    }
+                // We can safely ignore any interfaces, since we only want to get implementations
+                if (isValidModuleClass(aClass)) {
+                    candidates.add((Class<? extends Module>) aClass);
                 }
-            } catch (NoClassDefFoundError e) {
-                LOG.log(Level.INFO, "Could not load class that was available at compile time for: " + className, e);
-                continue;
-            }
 
-            // We can safely ignore any interfaces, since we only want to get implementations
-            if (isValidModuleClass(aClass)) {
-                candidates.add((Class<? extends Module>) aClass);
+            } catch (ClassNotFoundException e1) {
+                LOG.log(Level.WARNING, "Could not load class: " + className, e1);
+
+            } catch (NoClassDefFoundError e) {
+                LOG.log(Level.INFO, "Could not load class that was available at compile time for: " + className +
+                        "! This often seems to be a problem with shading, please check the classes / build script", e);
             }
         }
 
@@ -142,11 +133,10 @@ public final class ModuleLoader extends Destroyable {
             // Instantiate module
             final Constructor<? extends Module> constructor = classEntry.getImplementation().getDeclaredConstructor();
             constructor.setAccessible(true);
-
             module = constructor.newInstance();
 
             // Set to load and initialize the module
-            injectAndInitialize(moduleManager, module, information, moduleEntry);
+            injectAndInitialize(moduleManager, module, information, moduleEntry, this);
 
             // Set to ready and add to registry, but also add the instance in "ghost mode"
             registerEntry(classEntry, module, information, moduleEntry);
@@ -164,13 +154,13 @@ public final class ModuleLoader extends Destroyable {
     }
 
     public void injectAndInitialize(ModuleManager manager, Module module, ModuleInformationImpl information,
-                                    ModuleRegistry.Entry moduleEntry) {
+                                    ModuleRegistry.Entry moduleEntry, ModuleLoader loader) {
         try {
             // Set to loading state
             information.setState(ModuleState.LOADING);
 
             // Inject dependencies
-            injector.inject(moduleEntry, module);
+            injector.inject(moduleEntry, module, loader);
 
             // Call initialize method
             Annotations.call(module, Initialize.class, 0, new Class[]{ModuleManager.class}, manager);

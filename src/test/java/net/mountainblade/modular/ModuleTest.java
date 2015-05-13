@@ -27,12 +27,6 @@ import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-/**
- * Represents the ModuleTest.
- *
- * @author spaceemotion
- * @version 1.0
- */
 @RunWith(JUnit4.class)
 public class ModuleTest {
     private static boolean ranOnce = false;
@@ -64,16 +58,19 @@ public class ModuleTest {
         // Check if we got the right modules
         Assert.assertTrue("No modules loaded!", modules.size() > 0);
         Assert.assertEquals("Not all modules got loaded successfully!", manager.getModules().size(), modules.size());
-        Assert.assertEquals("Expected to see 2 modules loaded", 2, modules.size());
+        Assert.assertEquals("Expected to see 3 modules loaded", 3, modules.size());
 
         // Check module metadata / information
         ModuleInformation information = manager.getInformation(Example2Module.class).get();
         Assert.assertNotNull("Could not get information for module", information);
         Assert.assertEquals(ModuleState.READY, information.getState());
-        Assert.assertEquals(Example2ModuleImpl.VERSION, information.getVersion());
+        Assert.assertEquals(Example2ModuleImpl.VERSION, information.getVersion().toString());
         Assert.assertArrayEquals(new String[]{Example2ModuleImpl.AUTHOR}, information.getAuthors());
 
-        System.out.println("Random number of the moment: " + manager.getModule(Example2Module.class).get().getNumber());
+        final Example2Module example2Module = manager.getModule(Example2Module.class).get();
+        System.out.println("Random number of the moment: " + example2Module.getNumber());
+        Assert.assertTrue(example2Module instanceof Example2ModuleImpl);
+        Assert.assertTrue(((Example2ModuleImpl) example2Module).wasSuccessful());
 
         // Check if we didn't get any new modules this time (two instances are not allowed)
         final Collection<Module> newModules = manager.loadModules(packageName);
