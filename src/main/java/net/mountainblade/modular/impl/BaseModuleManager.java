@@ -36,6 +36,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -59,22 +60,15 @@ public abstract class BaseModuleManager implements ModuleManager {
 
     private static final ClassWorld CLASS_WORLD = new ClassWorld();
     private static final ClassLoader CLASS_LOADER = BaseModuleManager.class.getClassLoader();
+    private static final String JAVA_HOME = new File(System.getProperty("java.home")).getParent();
     private static final List<URI> LOCAL_CLASSPATH = new LinkedList<>();
     private static final Map<URI, Collection<String>> JAR_CACHE = new THashMap<>();
     private static final Collection<String> BLACKLIST = new THashSet<>();
+    private static boolean thoroughSearchEnabled;
 
     static {
         Collections.addAll(BLACKLIST, ".git", ".idea");
-
-        try {
-            final URL resource = ClassLoader.getSystemClassLoader().getResource(".");
-
-            if (resource != null) {
-                LOCAL_CLASSPATH.clear();
-                LOCAL_CLASSPATH.add(resource.toURI());
-            }
-
-        } catch (URISyntaxException ignore) {}
+        enableThoroughSearch(System.getProperty("modular.thoroughSearch") != null);
     }
 
     private final Collection<Destroyable> destroyables;
@@ -230,25 +224,11 @@ public abstract class BaseModuleManager implements ModuleManager {
             }
 
             for (Injector.Entry dependencyEntry : classEntry.getDependencies()) {
-                // Skip the ones we don't need
-                final Class<? extends Module> dependency = dependencyEntry.getModule();
-                if (dependency == null || dependency.equals(classEntry.getImplementation())) {
-                    continue;
-                }
+                addDependency(classEntry, node, dependencyEntry.getModule(), nodes, sortedCandidates);
+            }
 
-                final ModuleLoader.ClassEntry depClassEntry = loader.getClassEntry(dependency);
-                if (depClassEntry == null) {
-                    LOG.warning("Could not get class entry for dependency: " + dependency);
-                    continue;
-                }
-
-                TopologicalSortedList.Node<ModuleLoader.ClassEntry> depNode = nodes.get(depClassEntry);
-                if (depNode == null) {
-                    depNode = sortedCandidates.addNode(depClassEntry);
-                    nodes.put(depClassEntry, depNode);
-                }
-
-                depNode.isRequiredBefore(node);
+            for (Class<? extends Module> moduleClass : classEntry.getRequirements()) {
+                addDependency(classEntry, node, moduleClass, nodes, sortedCandidates);
             }
         }
 
@@ -276,6 +256,31 @@ public abstract class BaseModuleManager implements ModuleManager {
         }
 
         return modules;
+    }
+
+    private void addDependency(ModuleLoader.ClassEntry classEntry,
+                               TopologicalSortedList.Node<ModuleLoader.ClassEntry> node,
+                               Class<? extends Module> dependency,
+                               Map<ModuleLoader.ClassEntry, TopologicalSortedList.Node<ModuleLoader.ClassEntry>> nodes,
+                               TopologicalSortedList<ModuleLoader.ClassEntry> sortedCandidates) {
+        // Skip the ones we don't need
+        if (dependency == null || dependency.equals(classEntry.getImplementation())) {
+            return;
+        }
+
+        final ModuleLoader.ClassEntry depClassEntry = loader.getClassEntry(dependency);
+        if (depClassEntry == null) {
+            LOG.warning("Could not get class entry for dependency: " + dependency);
+            return;
+        }
+
+        TopologicalSortedList.Node<ModuleLoader.ClassEntry> depNode = nodes.get(depClassEntry);
+        if (depNode == null) {
+            depNode = sortedCandidates.addNode(depClassEntry);
+            nodes.put(depClassEntry, depNode);
+        }
+
+        depNode.isRequiredBefore(node);
     }
 
     private boolean addUriToRealm(URI uri) {
@@ -486,6 +491,41 @@ public abstract class BaseModuleManager implements ModuleManager {
 
     public static void blacklist(String name) {
         BLACKLIST.add(name);
+    }
+
+    public static void enableThoroughSearch(boolean toggle) {
+        thoroughSearchEnabled = toggle;
+        LOCAL_CLASSPATH.clear();
+
+        try {
+            if (toggle) {
+                // Add full runtime classpath
+                addUrls: for (URL url: ((URLClassLoader) ClassLoader.getSystemClassLoader()).getURLs()) {
+                    final String path = url.getPath();
+                    if (path.startsWith(JAVA_HOME)) {
+                        continue;
+                    }
+
+                    for (String blacklisted : BLACKLIST) {
+                        if (path.contains(blacklisted)) {
+                            break addUrls;
+                        }
+                    }
+
+                    LOCAL_CLASSPATH.add(url.toURI());
+                }
+            } else {
+                // Only add the current folder / jar as root
+                final URL resource = ClassLoader.getSystemClassLoader().getResource(".");
+                if (resource != null) {
+                    LOCAL_CLASSPATH.add(resource.toURI());
+                }
+            }
+        } catch (URISyntaxException ignore) {}
+    }
+
+    public static boolean thoroughSearchEnabled() {
+        return thoroughSearchEnabled;
     }
 
 }

@@ -27,9 +27,8 @@ import java.lang.annotation.Target;
  *
  * <p>The instantiation happens at runtime, using
  * {@link net.mountainblade.modular.ModuleManager#loadModules(java.net.URI, net.mountainblade.modular.Filter...)
- * loadModules(URI uri)}*
- * to load the modules. If a module has no implementation marked with this annotation or an interface has been marked
- * instead, nothing will happen.</p>
+ * loadModules(URI uri)} to load the modules. If a module has no implementation marked with this annotation
+ * or an interface has been marked instead, nothing will happen.</p>
  *
  * <p>If the annotated class extends some abstract base that implements the module, the system will discover this on its
  * own. If you want to be specific, specify the module using the {@link #module()} parameter.</p>

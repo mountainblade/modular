@@ -24,6 +24,7 @@ import net.mountainblade.modular.ModuleState;
 import net.mountainblade.modular.annotations.Implementation;
 import net.mountainblade.modular.annotations.Initialize;
 import net.mountainblade.modular.annotations.Inject;
+import net.mountainblade.modular.annotations.Requires;
 import org.codehaus.plexus.classworlds.realm.ClassRealm;
 
 import java.lang.reflect.Constructor;
@@ -97,8 +98,10 @@ public final class ModuleLoader extends Destroyable {
                 LOG.log(Level.WARNING, "Could not load class: " + className, e1);
 
             } catch (NoClassDefFoundError e) {
-                LOG.log(Level.INFO, "Could not load class that was available at compile time for: " + className +
+                if (BaseModuleManager.thoroughSearchEnabled()) {
+                    LOG.log(Level.INFO, "Could not load class that was available at compile time for: " + className +
                         "! This often seems to be a problem with shading, please check the classes / build script", e);
+                }
             }
         }
 
@@ -240,8 +243,12 @@ public final class ModuleLoader extends Destroyable {
                 }
             }
 
+            // Find requirements
+            final Collection<Class<? extends Module>> requirements = new LinkedList<>();
+            getRequirementsRecursively(implClass, requirements);
+
             // Get dependencies via the injector, create new class entry and add to cache so we don't need to this again
-            classEntry = new ClassEntry(module, implClass, implementation, injector.discover(implClass));
+            classEntry = new ClassEntry(module, implClass, implementation, injector.discover(implClass), requirements);
             CLASS_CACHE.put(implClass, classEntry);
 
             // Also add the module, so we can get our dependencies right
@@ -249,6 +256,26 @@ public final class ModuleLoader extends Destroyable {
         }
 
         return classEntry;
+    }
+
+    private void getRequirementsRecursively(Class<?> aClass, Collection<Class<? extends Module>> list) {
+        final Requires[] requirements = aClass.getDeclaredAnnotationsByType(Requires.class);
+        for (Requires requirement : requirements) {
+            list.add(requirement.value());
+        }
+
+        // Check all the interfaces
+        for (Class<?> entry: aClass.getInterfaces()) {
+            if (entry != Module.class && !ignores.contains(entry)) {
+                getRequirementsRecursively(entry, list);
+            }
+        }
+
+        // Also check the superclass
+        final Class<?> parent = aClass.getSuperclass();
+        if (parent != null && parent != Object.class && parent != Module.class && !ignores.contains(parent)) {
+            getRequirementsRecursively(parent, list);
+        }
     }
 
     @Override
@@ -294,14 +321,17 @@ public final class ModuleLoader extends Destroyable {
         private final Class<? extends Module> implementation;
         private final Implementation annotation;
         private final Collection<Injector.Entry> dependencies;
+        private final Collection<Class<? extends Module>> requirements;
 
 
         public ClassEntry(Class<? extends Module> module, Class<? extends Module> implementation,
-                          Implementation annotation, Collection<Injector.Entry> dependencies) {
+                          Implementation annotation, Collection<Injector.Entry> dependencies,
+                          Collection<Class<? extends Module>> requirements) {
             this.module = module;
             this.implementation = implementation;
             this.annotation = annotation;
             this.dependencies = dependencies;
+            this.requirements = requirements;
         }
 
         public Class<? extends Module> getModule() {
@@ -320,27 +350,31 @@ public final class ModuleLoader extends Destroyable {
             return dependencies;
         }
 
+        public Collection<Class<? extends Module>> getRequirements() {
+            return requirements;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof ClassEntry)) return false;
 
-            ClassEntry that = (ClassEntry) o;
-
+            final ClassEntry that = (ClassEntry) o;
             return annotation.equals(that.annotation) && dependencies.equals(that.dependencies) &&
-                    implementation.equals(that.implementation) && module.equals(that.module);
+                    requirements.equals(that.requirements) && implementation.equals(that.implementation) &&
+                    module.equals(that.module);
         }
 
         @Override
         public int hashCode() {
             return 31 * (31 * (31 * module.hashCode() + implementation.hashCode()) + annotation.hashCode()) +
-                    dependencies.hashCode();
+                    dependencies.hashCode() + requirements.hashCode();
         }
 
         @Override
         public String toString() {
             return "ClassEntry{module=" + module + ", implementation=" + implementation + ", annotation=" + annotation +
-                    ", dependencies=" + dependencies + '}';
+                    ", dependencies=" + dependencies + ", requirements=" + requirements + '}';
         }
 
     }
