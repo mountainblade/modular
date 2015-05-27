@@ -143,4 +143,17 @@
         </plugins>
     </build>
 
+    <distributionManagement>
+        <repository>
+            <id>serkprojects</id>
+            <name>Internal Releases</name>
+            <url>http://repo.serkprojects.com/content/repositories/releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>serkprojects</id>
+            <name>Internal Releases</name>
+            <url>http://repo.serkprojects.com/content/repositories/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
 </project>
