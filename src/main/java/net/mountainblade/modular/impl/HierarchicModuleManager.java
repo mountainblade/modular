@@ -30,7 +30,11 @@ public class HierarchicModuleManager extends BaseModuleManager {
 
 
     public HierarchicModuleManager(DefaultModuleManager parent) {
-        super(new HierarchicModuleRegistry(parent.getRegistry()), newRealm(parent.getLoader().getRealm()));
+        this(parent, null);
+    }
+
+    public HierarchicModuleManager(DefaultModuleManager parent, ClassLoader loader) {
+        super(new HierarchicModuleRegistry(parent.getRegistry()), newRealm(parent.getLoader().getRealm(), loader));
 
         this.parent = parent;
     }

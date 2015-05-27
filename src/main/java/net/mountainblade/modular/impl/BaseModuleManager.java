@@ -59,7 +59,6 @@ public abstract class BaseModuleManager implements ModuleManager {
     private static final Logger LOG = Logger.getLogger(DefaultModuleManager.class.getName());
 
     private static final ClassWorld CLASS_WORLD = new ClassWorld();
-    private static final ClassLoader CLASS_LOADER = BaseModuleManager.class.getClassLoader();
     private static final String JAVA_HOME = new File(System.getProperty("java.home")).getParent();
     private static final List<URI> LOCAL_CLASSPATH = new LinkedList<>();
     private static final Map<URI, Collection<String>> JAR_CACHE = new THashMap<>();
@@ -79,13 +78,17 @@ public abstract class BaseModuleManager implements ModuleManager {
     private final ModuleLoader loader;
 
 
-    public BaseModuleManager(ModuleRegistry registry, ClassRealm parentRealm) {
+    public BaseModuleManager(ModuleRegistry registry, ClassRealm parentRealm, ClassLoader classLoader) {
+        this(registry, newRealm(parentRealm, classLoader));
+    }
+
+    public BaseModuleManager(ModuleRegistry registry, ClassRealm realm) {
         this.destroyables = new LinkedList<>();
         this.classpath = new THashSet<>(LOCAL_CLASSPATH);
 
         this.registry = registry;
         this.injector = new Injector(registry);
-        this.loader = new ModuleLoader(newRealm(parentRealm), registry, injector);
+        this.loader = new ModuleLoader(realm, registry, injector);
 
         destroyables.add(registry);
         destroyables.add(injector);
@@ -478,10 +481,14 @@ public abstract class BaseModuleManager implements ModuleManager {
         }
     }
 
-    public static ClassRealm newRealm(ClassRealm parent) {
+    public static ClassRealm newRealm(ClassRealm parent, ClassLoader classLoader) {
+        if (classLoader == null) {
+            classLoader = BaseModuleManager.class.getClassLoader();
+        }
+
         try {
             final String name = UUID.randomUUID().toString();
-            return parent != null ? parent.createChildRealm(name) : CLASS_WORLD.newRealm(name, CLASS_LOADER);
+            return parent != null ? parent.createChildRealm(name) : CLASS_WORLD.newRealm(name, classLoader);
 
         } catch (DuplicateRealmException e) {
             // Hopefully this never happens... would be weird, right? Right?!?

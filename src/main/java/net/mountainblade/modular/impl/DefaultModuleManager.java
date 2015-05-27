@@ -30,9 +30,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DefaultModuleManager extends BaseModuleManager {
 
     public DefaultModuleManager() {
+        this(null);
+    }
+
+    public DefaultModuleManager(ClassLoader loader) {
         super(new ModuleRegistry(
                 new ConcurrentHashMap<Class<? extends Module>, ModuleRegistry.Entry>(), new THashSet<Module>()
-        ), null);
+        ), null, loader);
 
         // Also register ourselves so other modules can use this as implementation via injection
         getRegistry().addGhostModule(ModuleManager.class, this, new MavenModuleInformation());
