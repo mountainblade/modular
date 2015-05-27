@@ -29,6 +29,7 @@ import org.codehaus.plexus.classworlds.realm.ClassRealm;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
@@ -261,7 +262,7 @@ public final class ModuleLoader extends Destroyable {
     private void getRequirementsRecursively(Class<?> aClass, Collection<Class<? extends Module>> list) {
         final Requires[] requirements = aClass.getDeclaredAnnotationsByType(Requires.class);
         for (Requires requirement : requirements) {
-            list.add(requirement.value());
+            list.addAll(Arrays.asList(requirement.value()));
         }
 
         // Check all the interfaces

@@ -19,6 +19,6 @@ import java.lang.annotation.Target;
 public @interface Requires {
 
     /** The class of the module we require */
-    Class<? extends Module> value();
+    Class<? extends Module>[] value();
 
 }
