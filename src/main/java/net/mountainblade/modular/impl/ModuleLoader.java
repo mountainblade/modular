@@ -26,8 +26,10 @@ import net.mountainblade.modular.annotations.Initialize;
 import net.mountainblade.modular.annotations.Inject;
 import net.mountainblade.modular.annotations.Requires;
 import org.codehaus.plexus.classworlds.realm.ClassRealm;
+import org.codehaus.plexus.classworlds.strategy.Strategy;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collection;
@@ -66,8 +68,37 @@ public final class ModuleLoader extends Destroyable {
         ignores = new THashSet<>();
     }
 
+    /**
+     * Returns the underlying class realm that gets used when loading classes.
+     *
+     * @return The class realm instance
+     */
     public ClassRealm getRealm() {
         return realm;
+    }
+
+    /**
+     * Sets the loading strategy on the class realm.
+     *
+     * @param strategy    The loading strategy to use
+     */
+    public void setLoadingStrategy(Strategy strategy) {
+        // Whoohooo reflections!
+        for (Field field : realm.getClass().getDeclaredFields()) {
+            if (!Strategy.class.isAssignableFrom(field.getType())) {
+                continue;
+            }
+
+            try {
+                field.setAccessible(true);
+                field.set(realm, strategy);
+
+            } catch (IllegalAccessException e) {
+                LOG.log(Level.WARNING, "Could not set class realm loading strategy (using reflection)", e);
+            }
+
+            return;
+        }
     }
 
     /**
