@@ -16,6 +16,7 @@
 package net.mountainblade.modular;
 
 import com.google.common.base.Optional;
+import net.mountainblade.modular.impl.ModuleRegistry;
 
 import java.io.File;
 import java.net.URI;
@@ -81,11 +82,11 @@ public interface ModuleManager extends Module {
     Optional<ModuleInformation> getInformation(Class<? extends Module> module);
 
     /**
-     * Gets a collection of all registered Modules.
+     * Gets the registry containing all registered (loaded) Modules.
      *
-     * @return All registered modules in an unmodifiable collection
+     * @return The underlying module registry
      */
-    Collection<Module> getModules();
+    ModuleRegistry getRegistry();
 
     /**
      * Tells the manager to shut down and destroy all loaded modules.

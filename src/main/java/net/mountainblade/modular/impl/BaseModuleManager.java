@@ -98,7 +98,7 @@ public abstract class BaseModuleManager implements ModuleManager {
 
     // -------------------------------- Basic getters and setters --------------------------------
 
-    protected final ModuleRegistry getRegistry() {
+    public final ModuleRegistry getRegistry() {
         return registry;
     }
 
@@ -433,11 +433,6 @@ public abstract class BaseModuleManager implements ModuleManager {
     @Override
     public Optional<ModuleInformation> getInformation(Class<? extends Module> module) {
         return Optional.fromNullable(registry.getInformation(module));
-    }
-
-    @Override
-    public Collection<Module> getModules() {
-        return registry.getModules();
     }
 
 
