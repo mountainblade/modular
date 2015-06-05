@@ -31,6 +31,7 @@ import org.codehaus.plexus.classworlds.strategy.Strategy;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -112,28 +113,42 @@ public final class ModuleLoader extends Destroyable {
     }
 
     @SuppressWarnings("unchecked")
-    Collection<ClassEntry> getCandidates(Collection<String> classNames) {
+    Collection<ClassEntry> filter(BaseModuleManager manager, Map<URI, Collection<String>> classNames,
+                                  Collection<String> list) {
         final Collection<Class<? extends Module>> candidates = new TLinkedHashSet<>();
         final Collection<ClassEntry> moduleClasses = new LinkedList<>();
 
         // Walk over each location first, then build the list of potential modules
-        for (String className : classNames) {
-            try {
-                final Class<?> aClass = realm.loadClass(className);
+        for (Map.Entry<URI, Collection<String>> entry : classNames.entrySet()) {
+            boolean hasValidModule = false;
 
-                // We can safely ignore any interfaces, since we only want to get implementations
-                if (isValidModuleClass(aClass)) {
-                    candidates.add((Class<? extends Module>) aClass);
+            for (String className : entry.getValue()) {
+                try {
+                    final Class<?> aClass = realm.loadClass(className);
+
+                    // We can safely ignore any interfaces, since we only want to get implementations
+                    if (isValidModuleClass(aClass)) {
+                        hasValidModule = true;
+
+                        if (list.contains(className)) {
+                            candidates.add((Class<? extends Module>) aClass);
+                        }
+                    }
+
+                } catch (ClassNotFoundException e1) {
+                    LOG.log(Level.WARNING, "Could not load class: " + className, e1);
+
+                } catch (NoClassDefFoundError e) {
+                    if (!BaseModuleManager.thoroughSearchEnabled()) {
+                        LOG.log(Level.INFO, "Could not load class that was available at compile time for: " + className +
+                                "! This often seems to be a problem with shading, please check the classes / build script", e);
+                    }
                 }
+            }
 
-            } catch (ClassNotFoundException e1) {
-                LOG.log(Level.WARNING, "Could not load class: " + className, e1);
-
-            } catch (NoClassDefFoundError e) {
-                if (BaseModuleManager.thoroughSearchEnabled()) {
-                    LOG.log(Level.INFO, "Could not load class that was available at compile time for: " + className +
-                        "! This often seems to be a problem with shading, please check the classes / build script", e);
-                }
+            // If the whole URI did not contain a single valid module, blacklist that one
+            if (!hasValidModule) {
+                manager.blacklist(entry.getKey());
             }
         }
 
@@ -216,10 +231,10 @@ public final class ModuleLoader extends Destroyable {
             Annotations.call(module, Initialize.class, 0, new Class[]{ModuleManager.class}, manager);
 
         } catch (InjectFailedException e) {
-            LOG.log(Level.WARNING, "Could not load module implementation", e);
+            throw new RuntimeException("Could not load module implementation", e);
 
         } catch (InvocationTargetException | IllegalAccessException e) {
-            LOG.log(Level.WARNING, "Could not call initialize method on module implementation", e);
+            throw new RuntimeException("Could not call initialize method on module implementation", e);
         }
     }
 

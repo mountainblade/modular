@@ -71,9 +71,10 @@ public class ModuleTest {
         System.out.println("Loading modules took " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + " ms");
 
         // Check if we got the right modules
-        Assert.assertTrue("No modules loaded!", modules.size() > 0);
-        Assert.assertEquals("Not all modules got loaded successfully!", manager.getModules().size(), modules.size());
-        Assert.assertEquals("Expected to see 3 modules loaded", 3, modules.size());
+        final int size = modules.size();
+        Assert.assertTrue("No modules loaded!", size > 0);
+        Assert.assertEquals("Not all modules got loaded successfully!", manager.getRegistry().getModules().size(), size);
+        Assert.assertEquals("Expected to see 3 modules loaded", 3, size);
 
         // Check module metadata / information
         ModuleInformation information = manager.getInformation(Example2Module.class).get();
@@ -89,7 +90,7 @@ public class ModuleTest {
 
         // Check if we didn't get any new modules this time (two instances are not allowed)
         final Collection<Module> newModules = manager.loadModules(packageName);
-        Assert.assertEquals(modules.size(), newModules.size());
+        Assert.assertEquals(size, newModules.size());
 
         final Iterator<Module> first = modules.iterator();
         final Iterator<Module> second = newModules.iterator();
@@ -128,13 +129,28 @@ public class ModuleTest {
     public void testJars() throws Exception {
         final DefaultModuleManager manager = new DefaultModuleManager();
 
-        final URL resource = this.getClass().getResource("/modular-demo-1.0-SNAPSHOT.jar");
-        Assert.assertNotNull("couldn't find jar, be sure to run \"mvn package\" on the demo project first", resource);
+        final URL resource = getDemoJar();
+        final Collection<Module> modules = manager.loadModules(resource.toURI(), "net.");
+        Assert.assertEquals(1, modules.size());
 
+        manager.shutdown();
+    }
+
+    @Test
+    public void testJarsInFolder() throws Exception {
+        final DefaultModuleManager manager = new DefaultModuleManager();
+
+        final URL resource = getDemoJar();
         final Collection<Module> modules = manager.loadModules(UriHelper.folderOf(resource.getFile()), "net.");
         Assert.assertEquals(1, modules.size());
 
         manager.shutdown();
+    }
+
+    private URL getDemoJar() {
+        final URL resource = this.getClass().getResource("/modular-demo-1.0-SNAPSHOT.jar");
+        Assert.assertNotNull("couldn't find jar, be sure to run \"mvn package\" on the demo project first", resource);
+        return resource;
     }
 
     @Test
@@ -147,6 +163,7 @@ public class ModuleTest {
         }
 
         Assert.assertEquals(1, modules.size());
+        manager.shutdown();
     }
 
     /**

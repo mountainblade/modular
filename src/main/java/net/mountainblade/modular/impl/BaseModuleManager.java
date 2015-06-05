@@ -63,6 +63,7 @@ public abstract class BaseModuleManager implements ModuleManager {
     private static final List<URI> LOCAL_CLASSPATH = new LinkedList<>();
     private static final Map<URI, Collection<String>> JAR_CACHE = new THashMap<>();
     private static final Collection<String> BLACKLIST = new THashSet<>();
+    private static final Collection<URI> URI_BLACKLIST = new THashSet<>();
     private static boolean thoroughSearchEnabled;
 
     static {
@@ -171,7 +172,7 @@ public abstract class BaseModuleManager implements ModuleManager {
             }
 
         } catch (ClassNotFoundException ignore) {
-            // Just ignore this and assume its a package name
+            // Just ignore this and assume it's a package name
         }
 
         // ... then try the package name and use the local classpath
@@ -196,14 +197,15 @@ public abstract class BaseModuleManager implements ModuleManager {
         final LinkedList<URI> copy = new LinkedList<>(uris);
 
         // 1. Find modules using the URI
-        final THashSet<String> names = new THashSet<>();
-        final Collection<ModuleLoader.ClassEntry> candidates = loader.getCandidates(getClassNames(copy, root, names));
+        final THashMap<URI, Collection<String>> map = new THashMap<>();
+        final Collection<String> list = new LinkedList<>();
+        final Collection<ModuleLoader.ClassEntry> entries = loader.filter(this, getClasses(copy, root, map, list), list);
 
         // 2. Filter the results
         Iterator<ModuleLoader.ClassEntry> iterator;
 
         for (Filter filter : filters) {
-            iterator = candidates.iterator();
+            iterator = entries.iterator();
 
             while (iterator.hasNext()) {
                 final ModuleLoader.ClassEntry classEntry = iterator.next();
@@ -218,7 +220,7 @@ public abstract class BaseModuleManager implements ModuleManager {
         Map<ModuleLoader.ClassEntry, TopologicalSortedList.Node<ModuleLoader.ClassEntry>> nodes = new THashMap<>();
         final TopologicalSortedList<ModuleLoader.ClassEntry> sortedCandidates = new TopologicalSortedList<>();
 
-        for (ModuleLoader.ClassEntry classEntry : candidates) {
+        for (ModuleLoader.ClassEntry classEntry : entries) {
             TopologicalSortedList.Node<ModuleLoader.ClassEntry> node = nodes.get(classEntry);
 
             if (node == null) {
@@ -299,7 +301,8 @@ public abstract class BaseModuleManager implements ModuleManager {
         return false;
     }
 
-    private Collection<String> getClassNames(Collection<URI> uris, String packageName, Collection<String> classNames) {
+    private Map<URI, Collection<String>> getClasses(Collection<URI> uris, String packageName,
+                                                    Map<URI, Collection<String>> classNames, Collection<String> list) {
         // Example for a JAR URI:
         //
         // jar:file:/Users/spaceemotion/Development/bladekit/target/bladekit-commons-1.0-SNAPSHOT.jar!/net/mountainblade
@@ -323,11 +326,15 @@ public abstract class BaseModuleManager implements ModuleManager {
         //           - Test.class    <-- class
 
         for (URI uri : uris) {
+            if (URI_BLACKLIST.contains(uri)) {
+                continue;
+            }
+
             final File file;
 
             // If the uri does not seem to be a jar file, do the directory walk
             if (!uri.getScheme().equalsIgnoreCase("jar") && !uri.getSchemeSpecificPart().endsWith(".jar")) {
-                walkDirectory(null, new File(uri), packageName, classNames);
+                walkDirectory(null, new File(uri), packageName, classNames, list);
                 continue;
             }
 
@@ -336,11 +343,20 @@ public abstract class BaseModuleManager implements ModuleManager {
 
             // Check if we already have a cached version of the JAR file
             final Collection<String> cache = JAR_CACHE.get(uri);
+
             if (cache != null) {
-                for (String name : cache) {
-                    if (name.startsWith(packageName)) {
-                        classNames.add(name);
+                if (packageName.isEmpty()) {
+                    classNames.put(uri, cache);
+
+                } else {
+                    final LinkedList<String> names = new LinkedList<>();
+                    for (String name : cache) {
+                        if (name.startsWith(packageName)) {
+                            names.add(name);
+                        }
                     }
+
+                    classNames.put(uri, names);
                 }
 
                 continue;
@@ -361,7 +377,7 @@ public abstract class BaseModuleManager implements ModuleManager {
                         classes.add(name);
 
                         if (name.startsWith(packageName)) {
-                            classNames.add(name);
+                            list.add(name);
                         }
                     }
                 }
@@ -370,6 +386,7 @@ public abstract class BaseModuleManager implements ModuleManager {
             }
 
             // Add processed classes to the cache
+            classNames.put(uri, classes);
             JAR_CACHE.put(uri, classes);
         }
 
@@ -380,46 +397,66 @@ public abstract class BaseModuleManager implements ModuleManager {
         return name.substring(0, name.length() - ".class".length()).replace("\\", "/").replace("/", ".");
     }
 
-    private void walkDirectory(String rootPath, File parent, String packageName, Collection<String> classNames) {
+    private void walkDirectory(File root, File parent, String packageName, Map<URI, Collection<String>> names,
+                               Collection<String> list) {
         final File[] listFiles = parent.isDirectory() ? parent.listFiles() : null;
+        if (listFiles == null) {
+            return;
+        }
 
-        if (listFiles != null) {
-            loop: for (File file : listFiles) {
-                final String name = file.getName();
+        // Continue to look up valid files within the directory
+        loop: for (File file : listFiles) {
+            final String name = file.getName();
 
-                for (String blacklisted : BLACKLIST) {
-                    if (name.equalsIgnoreCase(blacklisted)) {
-                        continue loop;
-                    }
-                }
-
-                // Check if the current file is a directory, and if it is, check if its a classpath (and thus a root)
-                if (file.isDirectory()) {
-                    walkDirectory(classpath.contains(parent.toURI()) ?
-                            parent.getAbsolutePath() : rootPath, file, packageName, classNames);
-                    continue;
-                }
-
-                // If we have a root path check if we're in the right package
-                final String path = file.getAbsolutePath();
-                final String substring = rootPath != null ? path.substring(rootPath.length() + 1) : null;
-                if (substring != null && !substring.startsWith(packageName)) {
-                    continue;
-                }
-
-                // Check for JAR files and do the whole thing over again
-                final URI uri = file.toURI();
-                if (name.endsWith(".jar")) {
-                    getClassNames(Collections.singleton(uri), packageName, classNames);
-                    continue;
-                }
-
-                // Only add class files
-                if (name.endsWith(".class")) {
-                    classNames.add(getProperClassName(substring != null ? substring : path));
+            for (String blacklisted : BLACKLIST) {
+                if (name.equalsIgnoreCase(blacklisted)) {
+                    continue loop;
                 }
             }
+
+            // Check if the current file is a directory, and if it is, check if its a classpath (and thus a root)
+            if (file.isDirectory()) {
+                walkDirectory(classpath.contains(parent.toURI()) ?
+                        parent.getAbsoluteFile() : root, file, packageName, names, list);
+                continue;
+            }
+
+            // Check for JAR files and do the whole thing over again
+            final URI uri = file.toURI();
+            if (name.endsWith(".jar")) {
+                getClasses(Collections.singleton(uri), packageName, names, list);
+                continue;
+            }
+
+            if (root == null) {
+                root = parent;
+            }
+
+            // If we have a root path check if we're in the right package
+            final String path = file.getAbsolutePath();
+            final String substring = path.substring(root.getAbsolutePath().length() + 1);
+            if (!substring.startsWith(packageName)) {
+                continue;
+            }
+
+            // Only add class files
+            if (name.endsWith(".class")) {
+                final URI rootUri = root.toURI();
+                Collection<String> classNames = names.get(rootUri);
+                if (classNames == null) {
+                    classNames = new LinkedList<>();
+                    names.put(rootUri, classNames);
+                }
+
+                final String className = getProperClassName(substring);
+                classNames.add(className);
+                list.add(className);
+            }
         }
+    }
+
+    void blacklist(URI uri) {
+        URI_BLACKLIST.add(uri);
     }
 
 
