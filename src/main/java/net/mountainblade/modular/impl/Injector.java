@@ -78,6 +78,10 @@ public final class Injector extends Destroyable {
         supports.add(new Support(entry, classToMatch, exactMatch));
     }
 
+    public void removeSupport(EntryConstructor entry) {
+        supports.remove(entry);
+    }
+
     public Collection<Entry> discover(Class<? extends Module> implementationClass) {
         Collection<Entry> entries = cache.get(implementationClass);
 
@@ -173,7 +177,7 @@ public final class Injector extends Destroyable {
 
         // Loop through the entries and inject the dependencies
         for (Entry entry : discover(implementationClass)) {
-            if (!entry.apply(moduleEntry, module, loader)) {
+            if (entry != null && !entry.apply(moduleEntry, module, loader)) {
                 throw new InjectFailedException("Failed to inject dependencies: " + entry.getModule());
             }
         }
