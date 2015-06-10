@@ -353,6 +353,7 @@ public abstract class BaseModuleManager implements ModuleManager {
                     for (String name : cache) {
                         if (name.startsWith(packageName)) {
                             names.add(name);
+                            list.add(name);
                         }
                     }
 
