@@ -125,7 +125,7 @@ public class ModuleTest {
         final DefaultModuleManager manager = new DefaultModuleManager();
 
         final URL resource = getDemoJar();
-        final Collection<Module> modules = manager.loadModules(resource.toURI(), "net.");
+        final Collection<Module> modules = manager.loadModules(resource.toURI(), PathHelper.near(Module.class));
         Assert.assertEquals(1, modules.size());
 
         manager.shutdown();
@@ -135,8 +135,7 @@ public class ModuleTest {
     public void testJarsInFolder() throws Exception {
         final DefaultModuleManager manager = new DefaultModuleManager();
 
-        final URL resource = getDemoJar();
-        final Collection<Module> modules = manager.loadModules(UriHelper.folderOf(resource.getFile()), "net.");
+        final Collection<Module> modules = manager.loadModules(PathHelper.inside(getDemoJar()), "net.");
         Assert.assertEquals(1, modules.size());
 
         manager.shutdown();
