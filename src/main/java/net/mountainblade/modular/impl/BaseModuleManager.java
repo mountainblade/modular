@@ -338,7 +338,8 @@ public class BaseModuleManager implements ModuleManager {
 
             // If the uri does not seem to be a jar file, do the directory walk
             if (!uri.getScheme().equalsIgnoreCase("jar") && !uri.getSchemeSpecificPart().endsWith(".jar")) {
-                walkDirectory(null, new File(uri), packageName, classNames, list);
+                final File parent = new File(uri);
+                walkDirectory(parent, parent, packageName, classNames, list);
                 continue;
             }
 
@@ -456,6 +457,8 @@ public class BaseModuleManager implements ModuleManager {
                 final String className = getProperClassName(substring);
                 classNames.add(className);
                 list.add(className);
+
+                addUriToRealm(rootUri);
             }
         }
     }

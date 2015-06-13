@@ -22,18 +22,17 @@ import net.mountainblade.modular.annotations.Inject;
 import net.mountainblade.modular.examples.Example2Module;
 import net.mountainblade.modular.examples.Example2ModuleImpl;
 import net.mountainblade.modular.examples.ExampleModule;
-import net.mountainblade.modular.impl.BaseModuleManager;
 import net.mountainblade.modular.impl.DefaultModuleManager;
 import net.mountainblade.modular.impl.HierarchicModuleManager;
 import net.mountainblade.modular.junit.Repeat;
 import net.mountainblade.modular.junit.RepeatRule;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.net.URL;
@@ -49,10 +48,6 @@ public class ModuleTest {
     @Rule
     public RepeatRule repeatRule = new RepeatRule();
 
-    @Before
-    public void setUp() throws Exception {
-        BaseModuleManager.blacklist("demo");
-    }
 
     @Test
     @Repeat(3) // Repeat because the topological sort is kind of random
@@ -148,7 +143,7 @@ public class ModuleTest {
     }
 
     private URL getDemoJar() {
-        final URL resource = this.getClass().getResource("/modular-demo-1.0-SNAPSHOT.jar");
+        final URL resource = getClass().getResource("/modular-demo-1.0-SNAPSHOT.jar");
         Assert.assertNotNull("couldn't find jar, be sure to run \"mvn package\" on the demo project first", resource);
         return resource;
     }
@@ -165,6 +160,22 @@ public class ModuleTest {
         Assert.assertEquals(1, modules.size());
         manager.shutdown();
     }
+
+    @Test
+    public void testClassFiles() throws Exception {
+        final File rootFolder = new File(getClass().getResource("/").getFile()).getParentFile().getParentFile();
+        final File demoFolder = new File(rootFolder, "demo");
+        final File targetFolder = new File(demoFolder, "target");
+        if (!targetFolder.exists()) {
+            throw new Exception("Cannot test class files without having the modular demo compiled beforehand");
+        }
+
+        final DefaultModuleManager manager = new DefaultModuleManager();
+        final File classesFolder = new File(targetFolder, "classes");
+        final Collection<Module> modules = manager.loadModules(classesFolder);
+        Assert.assertEquals(1, modules.size());
+    }
+
 
     /**
      * The third example module, this time in-lined.
