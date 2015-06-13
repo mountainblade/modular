@@ -37,9 +37,6 @@ public class DefaultModuleManager extends BaseModuleManager {
         super(new ModuleRegistry(
                 new ConcurrentHashMap<Class<? extends Module>, ModuleRegistry.Entry>(), new THashSet<Module>()
         ), null, loader);
-
-        // Also register ourselves so other modules can use this as implementation via injection
-        getRegistry().addGhostModule(ModuleManager.class, this, new MavenModuleInformation());
     }
 
 }

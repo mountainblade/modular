@@ -94,6 +94,9 @@ public class BaseModuleManager implements ModuleManager {
         destroyables.add(registry);
         destroyables.add(injector);
         destroyables.add(loader);
+
+        // Also register ourselves so other modules can use this as implementation via injection
+        getRegistry().addGhostModule(ModuleManager.class, this, new MavenModuleInformation());
     }
 
 
