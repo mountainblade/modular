@@ -195,10 +195,12 @@ public class BaseModuleManager implements ModuleManager {
         return loadModules(uri, "", filters);
     }
 
-    public Collection<Module> loadModules(URI uri, String root, Filter... filters) {
-        return loadModules(Collections.singletonList(uri), root, filters);
+    @Override
+    public Collection<Module> loadModules(URI uri, String packageName, Filter... filters) {
+        return loadModules(Collections.singletonList(uri), packageName, filters);
     }
 
+    @Override
     public Collection<Module> loadModules(Collection<URI> uris, String root, Filter... filters) {
         final LinkedList<URI> copy = new LinkedList<>(uris);
 

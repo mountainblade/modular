@@ -58,7 +58,16 @@ public interface ModuleManager extends Module {
      */
     Collection<Module> loadModules(URI uri, Filter... filters);
 
-    // anything, except classpath
+    /**
+     * Loads modules from a URI with support for a resource package filter.
+     *
+     * @param uri            The URI to load the modules from
+     * @param packageName    The root package name to look for
+     * @param filters        An array of {@link net.mountainblade.modular.Filter filters} to use
+     * @return A collection of all successfully loaded modules.
+     */
+    Collection<Module> loadModules(URI uri, String packageName, Filter... filters);
+
     Collection<Module> loadModules(File file, Filter... filters);
 
     // package names
@@ -66,6 +75,16 @@ public interface ModuleManager extends Module {
 
     // specific class
     <M extends Module> M loadModule(Class<M> moduleClass, Filter... filters);
+
+    /**
+     * Loads modules from a collection of URIs with support for a resource package filter.
+     *
+     * @param uris           A collection of URIs to load the modules from
+     * @param packageName    The root package name to look for
+     * @param filters        An array of {@link net.mountainblade.modular.Filter filters} to use
+     * @return A collection of all successfully loaded modules.
+     */
+    Collection<Module> loadModules(Collection<URI> uris, String packageName, Filter... filters);
 
     /**
      * Gets a specific module by its class.
