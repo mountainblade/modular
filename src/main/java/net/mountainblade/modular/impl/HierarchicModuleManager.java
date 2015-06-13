@@ -26,14 +26,30 @@ import net.mountainblade.modular.ModuleInformation;
  * @version 1.0
  */
 public class HierarchicModuleManager extends BaseModuleManager {
-    private final DefaultModuleManager parent;
+    private final BaseModuleManager parent;
 
-
-    public HierarchicModuleManager(DefaultModuleManager parent) {
+    /**
+     * Creates a new hierarchic module manager instance.
+     *
+     * This will initialize a new manager while keeping access to the given parent.
+     * The new manager will have a custom registry and loader and be contained inside
+     * a its own class realm, but will be able to fetch modules from its parent.
+     *
+     * @param parent    The parent manager to use as a reference
+     * @see DefaultModuleManager
+     */
+    public HierarchicModuleManager(BaseModuleManager parent) {
         this(parent, null);
     }
 
-    public HierarchicModuleManager(DefaultModuleManager parent, ClassLoader loader) {
+    /**
+     * Creates a new hierarchic module manager instance with a custom parent class loader.
+     *
+     * @param parent    The parent manager to use as a reference
+     * @param loader    The custom class loader
+     * @see #HierarchicModuleManager(BaseModuleManager)
+     */
+    public HierarchicModuleManager(BaseModuleManager parent, ClassLoader loader) {
         super(new HierarchicModuleRegistry(parent.getRegistry()), newRealm(parent.getLoader().getRealm(), loader));
 
         this.parent = parent;
@@ -56,9 +72,14 @@ public class HierarchicModuleManager extends BaseModuleManager {
         shutdown(false);
     }
 
+    /**
+     * Shuts down this module manager with the option to only shut down itself or with the parent.
+     *
+     * @param withParent    True if the parent should also be shut down, false if not
+     */
     public void shutdown(boolean withParent) {
         final HierarchicModuleRegistry registry = (HierarchicModuleRegistry) getRegistry();
-        shutdown(withParent ? registry.getModuleCollection().iterator() : registry.getChildModules());
+        shutdown(withParent ? registry.getModules().iterator() : registry.getChildModules());
     }
 
 }

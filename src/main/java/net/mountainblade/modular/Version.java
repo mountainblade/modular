@@ -21,8 +21,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Represents a class that parses and stores version information using the <a href="http://semver.org">semantic version
- * format</a>.
+ * Represents a class that parses and stores version information using the extended
+ * <a href="http://semver.org">semantic version format</a> (with pre-release and build labels).
  *
  * @author spaceemotion
  * @version 1.0
@@ -44,19 +44,57 @@ public final class Version implements Comparable<Version> {
     private String build;
     private boolean snapshot;
 
-
+    /**
+     * Creates a new version.
+     *
+     * @param major    The major version (for incompatible API changes)
+     */
     public Version(int major) {
         this(major, 0);
     }
 
+    /**
+     * Creates a new version.
+     *
+     * @param major    The major version (for incompatible API changes)
+     * @param minor    The minor version (functionality in a backwards-compatible manner)
+     */
     public Version(int major, int minor) {
         this(major, minor, 0);
     }
 
+    /**
+     * Creates a new version.
+     *
+     * @param major    The major version (for incompatible API changes)
+     * @param minor    The minor version (functionality in a backwards-compatible manner)
+     * @param patch    The patch version (backwards-compatible bug fixes)
+     */
     public Version(int major, int minor, int patch) {
         this(major, minor, patch, "", "");
     }
 
+    /**
+     * Creates a new version.
+     *
+     * @param major       The major version (for incompatible API changes)
+     * @param minor       The minor version (functionality in a backwards-compatible manner)
+     * @param patch       The patch version (backwards-compatible bug fixes)
+     * @param snapshot    True if the version represents a snapshot, false if not
+     */
+    public Version(int major, int minor, int patch, boolean snapshot) {
+        this(major, minor, patch, snapshot ? SNAPSHOT : "", "");
+    }
+
+    /**
+     * Creates a new version.
+     *
+     * @param major         The major version (for incompatible API changes)
+     * @param minor         The minor version (functionality in a backwards-compatible manner)
+     * @param patch         The patch version (backwards-compatible bug fixes)
+     * @param preRelease    The pre-release tag
+     * @param build         The build identifier
+     */
     public Version(int major, int minor, int patch, String preRelease, String build) {
         this.major = major;
         this.minor = minor;
@@ -67,6 +105,12 @@ public final class Version implements Comparable<Version> {
         checkSnapshot();
     }
 
+    /**
+     * Creates a new version from the given text.
+     *
+     * @param text    The version text
+     * @throws IllegalArgumentException When the given text does not contain a valid version tag
+     */
     public Version(String text) throws IllegalArgumentException {
         final Matcher matcher = SEMVER_FORMAT.matcher(text.trim());
         final int i = matcher.groupCount();
@@ -97,30 +141,76 @@ public final class Version implements Comparable<Version> {
         snapshot = preRelease.equalsIgnoreCase(SNAPSHOT);
     }
 
+    /**
+     * Gets the major version label representing incompatible API changes.
+     *
+     * @return The major version
+     */
     public int getMajor() {
         return major;
     }
 
+    /**
+     * Gets the minor version label for functionality in a backwards-compatible manner.
+     *
+     * @return The minor version
+     */
     public int getMinor() {
         return minor;
     }
 
+    /**
+     * Gets the patch label representing backwards-compatible bug fixes.
+     *
+     * @return The patch version
+     */
     public int getPatch() {
         return patch;
     }
 
+    /**
+     * Gets the pre-release label extension.
+     *
+     * @return The pre-release tag
+     */
     public String getPreRelease() {
         return preRelease;
     }
 
+    /**
+     * Gets the build label extension.
+     *
+     * @return The pre-release tag
+     */
     public String getBuild() {
         return build;
     }
 
+    /**
+     * Indicates whether or not the version represents a snapshot version
+     * (indicated by the "SNAPSHOT" suffix in the pre-release label).
+     *
+     * @return True if the version represents a snapshot, false if not
+     */
     public boolean isSnapshot() {
         return snapshot;
     }
 
+    /**
+     * Converts this version to a usable version tag.
+     *
+     * Its output is as follows:
+     * <ul>
+     *     <li>The MAJOR, MINOR and PATCH labels delimited by a dot</li>
+     *     <li>If set, the Pre-Release label suffixed by a dash ("-")</li>
+     *     <li>If set, the build label suffixed by a plus sign ("+")</li>
+     * </ul>
+     *
+     * If the version describes a snapshot version the "SNAPSHOT" tag
+     * will be written all uppercase. e.g: "1.0.2-SNAPSHOT+b10031".
+     *
+     * @return The full version tag
+     */
     @Override
     public String toString() {
         final StringBuilder builder = new StringBuilder();

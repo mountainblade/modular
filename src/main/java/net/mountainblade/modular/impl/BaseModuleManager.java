@@ -50,7 +50,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * Represents a BaseModuleManager.
+ * Represents the default implementation for module managers.
  *
  * @author spaceemotion
  * @version 1.0
@@ -78,11 +78,25 @@ public class BaseModuleManager implements ModuleManager {
     private final Injector injector;
     private final ModuleLoader loader;
 
-
+    /**
+     * Creates a new module manager instance.
+     *
+     * <strong>It is not recommended to </strong>
+     *
+     * @param registry       A registry instance
+     * @param parentRealm    The parent realm, can be left at {@code null}
+     * @param classLoader    A parent class loader, can be left at {@code null}
+     */
     public BaseModuleManager(ModuleRegistry registry, ClassRealm parentRealm, ClassLoader classLoader) {
         this(registry, newRealm(parentRealm, classLoader));
     }
 
+    /**
+     * Creates a new module manager instance.
+     *
+     * @param registry    A registry instance
+     * @param realm       The class realm to load our modules in
+     */
     public BaseModuleManager(ModuleRegistry registry, ClassRealm realm) {
         this.destroyables = new LinkedList<>();
         this.classpath = new THashSet<>(LOCAL_CLASSPATH);
@@ -149,7 +163,7 @@ public class BaseModuleManager implements ModuleManager {
 
         // Inject dependencies if specified
         if (inject) {
-            loader.injectAndInitialize(this, module, information, moduleEntry, loader);
+            loader.injectAndInitialize(this, module, information, moduleEntry);
         }
 
         // Register module
@@ -490,7 +504,7 @@ public class BaseModuleManager implements ModuleManager {
     @Override
     public void shutdown() {
         // Send shut down signal to all registered modules
-        shutdown(getRegistry().getModuleCollection().iterator());
+        shutdown(getRegistry().getModules().iterator());
     }
 
     protected void shutdown(Iterator<Module> iterator) {
@@ -531,6 +545,15 @@ public class BaseModuleManager implements ModuleManager {
         }
     }
 
+    /**
+     * Creates a new class realm.
+     *
+     * @param parent         The parent realm, if any - can be left at null
+     * @param classLoader    The parent class loader, if any - can be left at null
+     * @return A new class realm
+     * @throws RuntimeException When a realm of the same name already exists,
+     * as we're using UUIDs this <i>should</i> never happen...
+     */
     public static ClassRealm newRealm(ClassRealm parent, ClassLoader classLoader) {
         if (classLoader == null) {
             classLoader = BaseModuleManager.class.getClassLoader();
@@ -546,10 +569,28 @@ public class BaseModuleManager implements ModuleManager {
         }
     }
 
+    /**
+     * Blacklists the given directory / file name so folders
+     * with the same name will be ignored during the discovery process.
+     *
+     * @param name    The name of the directory or file
+     */
     public static void blacklist(String name) {
         BLACKLIST.add(name);
     }
 
+    /**
+     * Toggles the state of the "thorough search" mode.
+     *
+     * This mode was an internal first solution to a problem that, when running the application
+     * from inside an IDE, some modules might not work as expected because their requirements
+     * weren't loaded beforehand.
+     *
+     * However, this will increase the loading time drastically.
+     * This mode can also be enabled by commandline (using the {@code -Dmodular.thoroughSearch} property).
+     *
+     * @param toggle    True if the mode should be enabled, false if disabled
+     */
     public static void enableThoroughSearch(boolean toggle) {
         thoroughSearchEnabled = toggle;
         LOCAL_CLASSPATH.clear();
@@ -581,6 +622,12 @@ public class BaseModuleManager implements ModuleManager {
         } catch (URISyntaxException ignore) {}
     }
 
+    /**
+     * Indicates whether or not the "thorough search mode" is enabled.
+     *
+     * @return True if enabled, false if not
+     * @see #enableThoroughSearch(boolean)
+     */
     public static boolean thoroughSearchEnabled() {
         return thoroughSearchEnabled;
     }

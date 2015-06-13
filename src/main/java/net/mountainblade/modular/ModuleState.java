@@ -16,11 +16,21 @@
 package net.mountainblade.modular;
 
 /**
- * Represents the ModuleState.
+ * Represents the state a module can be currently in.
  *
  * @author spaceemotion
  * @version 1.0
  */
 public enum ModuleState {
-    LOADING, READY, SHUTDOWN, UNKNOWN
+    /** The module has been recognized and is currently loading */
+    LOADING,
+
+    /** The module is ready, the fields injected and its initialize method called (if there is one) */
+    READY,
+
+    /** The module was running at least once and its shutdown method has been called (if there is one) */
+    SHUTDOWN,
+
+    /** The state is currently unknown, can happen when a module has just been recognized by the system */
+    UNKNOWN
 }

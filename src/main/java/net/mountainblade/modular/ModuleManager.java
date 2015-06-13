@@ -34,6 +34,7 @@ public interface ModuleManager extends Module {
 
     /**
      * Simply provides a module instance and stores it in the registry.
+     * This will skip all injection and method calls.
      *
      * @param module the module
      * @see #provide(Module)
@@ -41,8 +42,8 @@ public interface ModuleManager extends Module {
     <T extends Module> T provideSimple(T module);
 
     /**
-     * Stored the given module instance in the registry, but also executes all injection magic and calls the usual
-     * methods.
+     * Stores the given module instance in the registry,
+     * but also executes all injection magic and calls the usual methods.
      *
      * @param module the module
      * @see #provideSimple(Module)
@@ -52,9 +53,12 @@ public interface ModuleManager extends Module {
     /**
      * Load modules from a URI.
      *
+     * This will load all JAR files (and their containing modules) within the URI
+     * as well as any ".class" files assuming the given URI is their root package.
+     *
      * @param uri        The URI to load the modules from
      * @param filters    An array of {@link net.mountainblade.modular.Filter filters} to use
-     * @return The collection of all successfully loaded modules.
+     * @return A collection of all successfully loaded modules.
      */
     Collection<Module> loadModules(URI uri, Filter... filters);
 
@@ -68,12 +72,36 @@ public interface ModuleManager extends Module {
      */
     Collection<Module> loadModules(URI uri, String packageName, Filter... filters);
 
+    /**
+     * Loads modules from the given file.
+     *
+     * If the file is a JAR file directly it will only load that JAR,
+     * otherwise this will work the same as {@link #loadModules(URI, Filter...)}.
+     *
+     * @param file       The file to load the modules from
+     * @param filters    An array of {@link net.mountainblade.modular.Filter filters} to use
+     * @return A collection of all successfully loaded modules.
+     */
     Collection<Module> loadModules(File file, Filter... filters);
 
-    // package names
+    /**
+     * Loads modules inside the current class path with the given string representing either
+     * a class file directly or a package and thus functioning as a filter.
+     *
+     * @param resource    The resource string, can be the fully qualified class name or a package name
+     * @param filters     An array of {@link net.mountainblade.modular.Filter filters} to use
+     * @return A collection of all successfully loaded modules.
+     */
     Collection<Module> loadModules(String resource, Filter... filters);
 
-    // specific class
+    /**
+     * Loads only the given module class and its dependencies.
+     *
+     * @param moduleClass    The class of the module to load
+     * @param filters        An array of {@link net.mountainblade.modular.Filter filters} to use
+     * @param <M>            The module type
+     * @return Only the given module object to allow for builder-like method chaining
+     */
     <M extends Module> M loadModule(Class<M> moduleClass, Filter... filters);
 
     /**
@@ -127,7 +155,6 @@ public interface ModuleManager extends Module {
 
     /**
      * Tells the manager to shut down and destroy all loaded modules.
-     * <br>
      * This can be useful for cases in which you want to have a clear, fresh start.
      */
     void shutdown();

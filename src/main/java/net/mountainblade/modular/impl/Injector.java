@@ -31,7 +31,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Represents the Injector for module dependencies.
+ * Represents the dependency Injector for module dependencies (only affects fields).
  *
  * @author spaceemotion
  * @version 1.0

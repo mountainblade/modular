@@ -26,6 +26,9 @@ import net.mountainblade.modular.annotations.Initialize;
 import net.mountainblade.modular.annotations.Inject;
 import net.mountainblade.modular.annotations.Requires;
 import org.codehaus.plexus.classworlds.realm.ClassRealm;
+import org.codehaus.plexus.classworlds.strategy.OsgiBundleStrategy;
+import org.codehaus.plexus.classworlds.strategy.ParentFirstStrategy;
+import org.codehaus.plexus.classworlds.strategy.SelfFirstStrategy;
 import org.codehaus.plexus.classworlds.strategy.Strategy;
 
 import java.lang.reflect.Constructor;
@@ -60,7 +63,13 @@ public final class ModuleLoader extends Destroyable {
 
     private final Collection<Class<?>> ignores;
 
-
+    /**
+     * Creates a new module loader.
+     *
+     * @param realm       The realm we load the modules in, this requires their URLs to be added beforehand
+     * @param registry    The module registry to register the modules with
+     * @param injector    The injector to inject their fields with
+     */
     public ModuleLoader(ClassRealm realm, ModuleRegistry registry, Injector injector) {
         this.realm = realm;
         this.registry = registry;
@@ -76,6 +85,24 @@ public final class ModuleLoader extends Destroyable {
      */
     public ClassRealm getRealm() {
         return realm;
+    }
+
+
+    /**
+     * Sets the loading strategy on the class realm.
+     *
+     * @param strategyClass    The class of the loading strategy to use
+     */
+    public void setLoadingStrategy(Class<? extends Strategy> strategyClass) {
+        if (ParentFirstStrategy.class.equals(strategyClass)) {
+            setLoadingStrategy(new ParentFirstStrategy(getRealm()));
+
+        } else if (SelfFirstStrategy.class.equals(strategyClass)) {
+            setLoadingStrategy(new SelfFirstStrategy(getRealm()));
+
+        } else if (OsgiBundleStrategy.class.equals(strategyClass)) {
+            setLoadingStrategy(new OsgiBundleStrategy(getRealm()));
+        }
     }
 
     /**
@@ -183,6 +210,13 @@ public final class ModuleLoader extends Destroyable {
         return false;
     }
 
+    /**
+     * Loads a module using its pre-compiled class entry.
+     *
+     * @param moduleManager    The module manager to use
+     * @param classEntry       The class entry to create the module out of
+     * @return A module instance or null if it could not be loaded properly
+     */
     public Module loadModule(ModuleManager moduleManager, ClassEntry classEntry) {
         // Try to get "from cache" first. We do not allow two modules be activated at the same time, so lets use that
         Module module = registry.getModule(classEntry.getImplementation());
@@ -201,7 +235,7 @@ public final class ModuleLoader extends Destroyable {
             module = constructor.newInstance();
 
             // Set to load and initialize the module
-            injectAndInitialize(moduleManager, module, information, moduleEntry, this);
+            injectAndInitialize(moduleManager, module, information, moduleEntry);
 
             // Set to ready and add to registry, but also add the instance in "ghost mode"
             registerEntry(classEntry, module, information, moduleEntry);
@@ -218,14 +252,22 @@ public final class ModuleLoader extends Destroyable {
         return null;
     }
 
+    /**
+     * Injects and initializes the given module.
+     *
+     * @param manager        The module manager to use
+     * @param module         The module in context
+     * @param information    The module's information instance
+     * @param moduleEntry    The registry entry
+     */
     public void injectAndInitialize(ModuleManager manager, Module module, ModuleInformationImpl information,
-                                    ModuleRegistry.Entry moduleEntry, ModuleLoader loader) {
+                                    ModuleRegistry.Entry moduleEntry) {
         try {
             // Set to loading state
             information.setState(ModuleState.LOADING);
 
             // Inject dependencies
-            injector.inject(moduleEntry, module, loader);
+            injector.inject(moduleEntry, module, this);
 
             // Call initialize method
             Annotations.call(module, Initialize.class, 0, new Class[]{ModuleManager.class}, manager);
@@ -238,6 +280,14 @@ public final class ModuleLoader extends Destroyable {
         }
     }
 
+    /**
+     * Registers a new class entry in the system.
+     *
+     * @param classEntry     The class entry to register
+     * @param module         The module in context
+     * @param information    The module's information instance
+     * @param moduleEntry    The registry entry
+     */
     public void registerEntry(ClassEntry classEntry, Module module, ModuleInformationImpl information,
                               ModuleRegistry.Entry moduleEntry) {
         information.setState(ModuleState.READY);
@@ -247,6 +297,16 @@ public final class ModuleLoader extends Destroyable {
         registry.addModule(classEntry.getImplementation(), moduleEntry, true);
     }
 
+    /**
+     * Fetches the class entry for the given module implementation class.
+     * If no class entry previously existed this will create the entry.
+     *
+     * If the given class is either null, is not a module or has been marked as invalid
+     * this will return null.
+     *
+     * @param implClass    The class of the module
+     * @return The class entry or null
+     */
     public ClassEntry getClassEntry(Class<? extends Module> implClass) {
         // Early checking for null, against module, and if we already checked and saw that it's invalid
         if (implClass == null || Module.class.equals(implClass) || Implementation.Default.class.equals(implClass) ||
@@ -326,7 +386,7 @@ public final class ModuleLoader extends Destroyable {
     }
 
     @Override
-    public void destroy() {
+    protected void destroy() {
         injector.destroy();
     }
 
@@ -363,6 +423,9 @@ public final class ModuleLoader extends Destroyable {
     }
 
 
+    /**
+     * Represents a class entry (DTO).
+     */
     public final static class ClassEntry {
         private final Class<? extends Module> module;
         private final Class<? extends Module> implementation;
@@ -371,9 +434,9 @@ public final class ModuleLoader extends Destroyable {
         private final Collection<Class<? extends Module>> requirements;
 
 
-        public ClassEntry(Class<? extends Module> module, Class<? extends Module> implementation,
-                          Implementation annotation, Collection<Injector.Entry> dependencies,
-                          Collection<Class<? extends Module>> requirements) {
+        private ClassEntry(Class<? extends Module> module, Class<? extends Module> implementation,
+                           Implementation annotation, Collection<Injector.Entry> dependencies,
+                           Collection<Class<? extends Module>> requirements) {
             this.module = module;
             this.implementation = implementation;
             this.annotation = annotation;
@@ -381,22 +444,47 @@ public final class ModuleLoader extends Destroyable {
             this.requirements = requirements;
         }
 
+        /**
+         * Gets the module we are implementing.
+         *
+         * @return The class of the module
+         */
         public Class<? extends Module> getModule() {
             return module;
         }
 
+        /**
+         * Gets the actual implementation class.
+         *
+         * @return The class of the implementation
+         */
         public Class<? extends Module> getImplementation() {
             return implementation;
         }
 
+        /**
+         * Gets the implementation annotation.
+         *
+         * @return The annotation
+         */
         public Implementation getAnnotation() {
             return annotation;
         }
 
+        /**
+         * Gets a collection of all module dependencies as injector entries.
+         *
+         * @return A collection of entries
+         */
         public Collection<Injector.Entry> getDependencies() {
             return dependencies;
         }
 
+        /**
+         * Gets a collection of all required modules.
+         *
+         * @return A collection of module classes
+         */
         public Collection<Class<? extends Module>> getRequirements() {
             return requirements;
         }

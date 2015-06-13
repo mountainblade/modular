@@ -17,22 +17,37 @@ package net.mountainblade.modular.impl;
 
 import gnu.trove.set.hash.THashSet;
 import net.mountainblade.modular.Module;
-import net.mountainblade.modular.ModuleManager;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Represents the default implementation of a {@link net.mountainblade.modular.ModuleManager}.
  *
+ * Use this if you want to have the simples of all implementations.
+ *
  * @author spaceemotion
  * @version 1.0
  */
 public class DefaultModuleManager extends BaseModuleManager {
 
+    /**
+     * Creates a new module manager instance.
+     *
+     * This will initialize a blank new manager, registry and loader, contained inside a new class realm.
+     * Modules loaded inside this manager will be kept hidden to other managers.
+     *
+     * @see HierarchicModuleManager
+     */
     public DefaultModuleManager() {
         this(null);
     }
 
+    /**
+     * Creates a new module manager instance with a custom parent class loader.
+     *
+     * @param loader    The custom class loader
+     * @see #DefaultModuleManager()
+     */
     public DefaultModuleManager(ClassLoader loader) {
         super(new ModuleRegistry(
                 new ConcurrentHashMap<Class<? extends Module>, ModuleRegistry.Entry>(), new THashSet<Module>()

@@ -25,6 +25,7 @@ import net.mountainblade.modular.examples.ExampleModule;
 import net.mountainblade.modular.filter.AnnotationPresent;
 import net.mountainblade.modular.filter.InstanceOf;
 import net.mountainblade.modular.filter.Not;
+import net.mountainblade.modular.impl.BaseModuleManager;
 import net.mountainblade.modular.impl.DefaultModuleManager;
 import net.mountainblade.modular.impl.HierarchicModuleManager;
 import net.mountainblade.modular.junit.Repeat;
@@ -59,6 +60,7 @@ public class ModuleTest {
         final Stopwatch stopwatch = Stopwatch.createStarted();
 
         // Create new manager
+        BaseModuleManager.blacklist("demo");
         final DefaultModuleManager manager = new DefaultModuleManager();
 
         // Load modules from our current package and "below"
@@ -111,6 +113,7 @@ public class ModuleTest {
         final HierarchicModuleManager hierarchicManager = new HierarchicModuleManager(manager);
         Assert.assertNotNull(hierarchicManager.loadModule(Example3Module.class));
         Assert.assertFalse("The parent knows about the children!", manager.getModule(Example3Module.class).isPresent());
+        Assert.assertEquals(4, hierarchicManager.getRegistry().getModules(ModuleState.READY).size());
 
         // And shut down the systems (hierarchic also shuts down the normal one)
         System.err.println("--- Shutting down " + (ranOnce ? "with" : "without") + " parent ---");

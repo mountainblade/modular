@@ -34,13 +34,21 @@ import java.util.Set;
  * @version 1.0
  */
 class HierarchicModuleRegistry extends ModuleRegistry {
+    private final CombinedCollection<Module> modules;
+
 
     HierarchicModuleRegistry(ModuleRegistry parent) {
-        super(new CombinedTHashMap<>(parent.getRegistry()), new CombinedCollection<Module>(parent));
+        this(new CombinedTHashMap<>(parent.getRegistry()), new CombinedCollection<>(parent.getModules()));
+    }
+
+    HierarchicModuleRegistry(Map<Class<? extends Module>, Entry> registry, CombinedCollection<Module> modules) {
+        super(registry, modules);
+
+        this.modules = modules;
     }
 
     Iterator<Module> getChildModules() {
-        return ((CombinedCollection<Module>) getModuleCollection()).childIterator();
+        return modules.childIterator();
     }
 
 
@@ -55,11 +63,11 @@ class HierarchicModuleRegistry extends ModuleRegistry {
         //
 
         /** The parent collection */
-        private final Set<E> parent;
+        private final Collection<E> parent;
 
 
-        public CombinedCollection(ModuleRegistry parent) {
-            this.parent = ((Set<E>) parent.getModuleCollection());
+        public CombinedCollection(Collection<E> parent) {
+            this.parent = parent;
         }
 
         @Override
@@ -120,7 +128,7 @@ class HierarchicModuleRegistry extends ModuleRegistry {
 
         @Override
         public Object[] toArray() {
-            Object[] result = new Object[size()];
+            final Object[] result = new Object[size()];
             int i = 0;
 
             for (E e : this) {
@@ -133,12 +141,12 @@ class HierarchicModuleRegistry extends ModuleRegistry {
         @SuppressWarnings("unchecked")
         @Override
         public <T> T[] toArray(T[] a) {
-            int size = size();
+            final int size = size();
             if (a.length < size) {
                 a = (T[]) Array.newInstance(a.getClass().getComponentType(), size);
             }
 
-            Object[] result = a;
+            final Object[] result = a;
             int i = 0;
 
             for (E e : this) {
