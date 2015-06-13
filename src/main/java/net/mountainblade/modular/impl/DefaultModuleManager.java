@@ -42,10 +42,4 @@ public class DefaultModuleManager extends BaseModuleManager {
         getRegistry().addGhostModule(ModuleManager.class, this, new MavenModuleInformation());
     }
 
-    @Override
-    public void shutdown() {
-        // Send shut down signal to all registered modules
-        shutdown(getRegistry().getModuleCollection().iterator());
-    }
-
 }

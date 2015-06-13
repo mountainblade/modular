@@ -55,7 +55,7 @@ import java.util.zip.ZipInputStream;
  * @author spaceemotion
  * @version 1.0
  */
-public abstract class BaseModuleManager implements ModuleManager {
+public class BaseModuleManager implements ModuleManager {
     private static final Logger LOG = Logger.getLogger(DefaultModuleManager.class.getName());
 
     private static final ClassWorld CLASS_WORLD = new ClassWorld();
@@ -99,6 +99,7 @@ public abstract class BaseModuleManager implements ModuleManager {
 
     // -------------------------------- Basic getters and setters --------------------------------
 
+    @Override
     public final ModuleRegistry getRegistry() {
         return registry;
     }
@@ -475,6 +476,12 @@ public abstract class BaseModuleManager implements ModuleManager {
 
 
     // -------------------------------- Miscellaneous --------------------------------
+
+    @Override
+    public void shutdown() {
+        // Send shut down signal to all registered modules
+        shutdown(getRegistry().getModuleCollection().iterator());
+    }
 
     protected void shutdown(Iterator<Module> iterator) {
         while (iterator.hasNext()) {
