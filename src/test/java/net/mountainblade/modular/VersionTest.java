@@ -25,33 +25,38 @@ public class VersionTest {
 
     @Test
     public void testVersions() throws Exception {
-        Version version = new Version("v1.0.0");
+        final Version version = Version.parse("v1.0.0");
         Assert.assertEquals(1, version.getMajor());
         Assert.assertEquals(0, version.getMinor());
         Assert.assertEquals(0, version.getPatch());
+        Assert.assertEquals(version, new Version(1));
 
-        Version snapshot = new Version("1.2.3-SNAPSHOT");
+        final Version snapshot = Version.parse("1.2.3-SNAPSHOT");
         Assert.assertEquals(1, snapshot.getMajor());
         Assert.assertEquals(2, snapshot.getMinor());
         Assert.assertEquals(3, snapshot.getPatch());
         Assert.assertTrue(snapshot.isSnapshot());
+        Assert.assertEquals(snapshot, new Version(1, 2, 3, true));
 
-        String patch = "alpha.10.beta.0";
-        String build = "build-1.0.unicorn";
-        Version unicorn = new Version("3.2.1-" + patch + '+' + build);
+        final String patch = "alpha.10.beta.0";
+        final String build = "build-1.0.unicorn";
+        final Version unicorn = Version.parse("3.2.1-" + patch + '+' + build);
         Assert.assertEquals(3, unicorn.getMajor());
         Assert.assertEquals(2, unicorn.getMinor());
         Assert.assertEquals(1, unicorn.getPatch());
         Assert.assertEquals(unicorn.getPreRelease(), patch);
         Assert.assertEquals(unicorn.getBuild(), build);
         Assert.assertFalse(unicorn.isSnapshot());
+        Assert.assertEquals(unicorn, new Version(3, 2, 1, patch, build));
 
-        Assert.assertEquals("1.0.0", new Version(1).toString());
+        Assert.assertEquals(1, new Version(2).compareTo(version));
+        Assert.assertEquals(1, new Version(1, 1).compareTo(version));
+        Assert.assertEquals(1, new Version(1, 0, 1).compareTo(version));
     }
 
     @Test
     public void testText() throws Exception {
-        Version[] versions = Version.parse("This app contains unicorn 1.3.7 and rainbow 4.2.9");
+        Version[] versions = Version.parseMulti("This app contains unicorn 1.3.7 and rainbow 4.2.9");
         Assert.assertEquals("unexpected number of found versions", 2, versions.length);
 
         Version unicorn = versions[0];

@@ -27,13 +27,15 @@ import java.util.regex.Pattern;
  * @author spaceemotion
  * @version 1.0
  */
-public class Version {
+public final class Version implements Comparable<Version> {
     public static final Pattern SEMVER_DETECT = Pattern.compile("\\bv?(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\." +
             "(?:0|[1-9][0-9]*)(?:-[\\da-z\\-]+(?:\\.[\\da-z\\-]+)*)?(?:\\+[\\da-z\\-]+(?:\\.[\\da-z\\-]+)*)?\\b",
             Pattern.CASE_INSENSITIVE);
     public static final Pattern SEMVER_FORMAT = Pattern.compile("v?(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:\\." +
             "(0|[1-9][0-9]*))?(?:-([\\da-z\\-]+(?:\\.[\\da-z\\-]+)*))?(?:\\+([\\da-z\\-]+(?:\\.[\\da-z\\-]+)*))?",
             Pattern.CASE_INSENSITIVE);
+
+    public static final String SNAPSHOT = "SNAPSHOT";
 
     private int major;
     private int minor;
@@ -59,14 +61,14 @@ public class Version {
         this.major = major;
         this.minor = minor;
         this.patch = patch;
-        this.preRelease = preRelease;
-        this.build = build;
+        this.preRelease = preRelease != null ? preRelease : "";
+        this.build = build != null ? build : "";
 
         checkSnapshot();
     }
 
     public Version(String text) throws IllegalArgumentException {
-        final Matcher matcher = SEMVER_FORMAT.matcher(text);
+        final Matcher matcher = SEMVER_FORMAT.matcher(text.trim());
         final int i = matcher.groupCount();
 
         if (!matcher.matches() || 0 > i) {
@@ -89,6 +91,10 @@ public class Version {
         build = buildStr != null ? buildStr : "";
 
         checkSnapshot();
+    }
+
+    private void checkSnapshot() {
+        snapshot = preRelease.equalsIgnoreCase(SNAPSHOT);
     }
 
     public int getMajor() {
@@ -115,17 +121,20 @@ public class Version {
         return snapshot;
     }
 
-    private void checkSnapshot() {
-        snapshot = preRelease.equalsIgnoreCase("snapshot");
-    }
-
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
+        final StringBuilder builder = new StringBuilder();
         builder.append(major).append('.').append(minor).append('.').append(patch);
 
         if (!preRelease.isEmpty()) {
-            builder.append('-').append(preRelease);
+            builder.append('-');
+
+            if (isSnapshot()) {
+                builder.append(SNAPSHOT);
+
+            } else {
+                builder.append(preRelease);
+            }
         }
 
         if (!build.isEmpty()) {
@@ -135,28 +144,67 @@ public class Version {
         return builder.toString();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final Version version = (Version) o;
+        return major == version.major && minor == version.minor && patch == version.patch &&
+                preRelease.equalsIgnoreCase(version.preRelease) && build.equalsIgnoreCase(version.build);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = major;
+        result = 31 * result + minor;
+        result = 31 * result + patch;
+        result = 31 * result + preRelease.toLowerCase().hashCode();
+        result = 31 * result + build.toLowerCase().hashCode();
+        return result;
+    }
+
+    @Override
+    public int compareTo(Version other) {
+        int result = major - other.major;
+
+        if (result == 0) {
+            result = minor - other.minor;
+        }
+        if (result == 0) {
+            result = patch - other.patch;
+        }
+        if (result == 0) {
+            result = preRelease.compareTo(other.preRelease);
+        }
+
+        return result;
+    }
+
     /**
      * Tries to find as many version tags within the given text and returns the result as an array.
      *
-     * @param text    The text to look through
+     * @param versions    The text to look through
      * @return All found version tags. Can be empty.
      */
-    public static Version[] parse(String text) {
-        if (text == null) {
+    public static Version[] parseMulti(String... versions) {
+        if (versions == null) {
             return new Version[0];
         }
 
-        Collection<Version> results = new LinkedList<>();
-        Matcher matcher = SEMVER_DETECT.matcher(text.toLowerCase());
+        final Collection<Version> results = new LinkedList<>();
+        for (String version : versions) {
+            Matcher matcher = SEMVER_DETECT.matcher(version.toLowerCase());
 
-        // Try to parse each version and add it to the list/array
-        while (matcher.find()) {
-            try {
-                String match = matcher.group();
-                results.add(new Version(match));
+            // Try to parse each version and add it to the list/array
+            while (matcher.find()) {
+                try {
+                    String match = matcher.group();
+                    results.add(new Version(match));
 
-            } catch (IllegalArgumentException ignore) {
-                // fallthrough
+                } catch (IllegalArgumentException ignore) {
+                    // fallthrough
+                }
             }
         }
 
@@ -170,8 +218,8 @@ public class Version {
      * @return The parsed version, can be empty
      * @throws IllegalArgumentException when the given string contains no, or more than one version
      */
-    public static Version parseSingle(String version) throws IllegalArgumentException {
-        final Version[] versions = Version.parse(version);
+    public static Version parse(String version) throws IllegalArgumentException {
+        final Version[] versions = Version.parseMulti(version);
         if (versions.length < 1) {
             throw new IllegalArgumentException("Cannot set empty / illegal version: " + version);
         }
