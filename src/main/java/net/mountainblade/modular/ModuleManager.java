@@ -16,6 +16,8 @@
 package net.mountainblade.modular;
 
 import com.google.common.base.Optional;
+import net.mountainblade.modular.impl.Injector;
+import net.mountainblade.modular.impl.ModuleLoader;
 import net.mountainblade.modular.impl.ModuleRegistry;
 
 import java.io.File;
@@ -87,6 +89,22 @@ public interface ModuleManager extends Module {
      * @return The underlying module registry
      */
     ModuleRegistry getRegistry();
+
+    /**
+     * Gets the underlying field injector.
+     * Use this if you want to add support for custom field types.
+     *
+     * @return The injector instance
+     */
+    Injector getInjector();
+
+    /**
+     * Gets the used module loader instance.
+     * Use this to set the loading strategy for example.
+     *
+     * @return The underlying module loader
+     */
+    ModuleLoader getLoader();
 
     /**
      * Tells the manager to shut down and destroy all loaded modules.

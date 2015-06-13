@@ -107,10 +107,12 @@ public class BaseModuleManager implements ModuleManager {
         return registry;
     }
 
+    @Override
     public final Injector getInjector() {
         return injector;
     }
 
+    @Override
     public final ModuleLoader getLoader() {
         return loader;
     }
