@@ -1,4 +1,4 @@
-package net.mountainblade.modular.filter;
+package net.mountainblade.modular.filters;
 
 import net.mountainblade.modular.Filter;
 import net.mountainblade.modular.impl.ModuleLoader;
