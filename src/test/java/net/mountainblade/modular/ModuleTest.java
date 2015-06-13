@@ -23,6 +23,8 @@ import net.mountainblade.modular.examples.Example2Module;
 import net.mountainblade.modular.examples.Example2ModuleImpl;
 import net.mountainblade.modular.examples.ExampleModule;
 import net.mountainblade.modular.filter.AnnotationPresent;
+import net.mountainblade.modular.filter.InstanceOf;
+import net.mountainblade.modular.filter.Not;
 import net.mountainblade.modular.impl.DefaultModuleManager;
 import net.mountainblade.modular.impl.HierarchicModuleManager;
 import net.mountainblade.modular.junit.Repeat;
@@ -151,7 +153,9 @@ public class ModuleTest {
     @Test
     public void testFilter() throws Exception {
         final DefaultModuleManager manager = new DefaultModuleManager();
-        final Collection<Module> modules = manager.loadModules("", new AnnotationPresent(ItsAKeeper.class));
+        final Collection<Module> modules = manager.loadModules("",
+                new AnnotationPresent(ItsAKeeper.class),
+                new Not(new InstanceOf(IgnoreMe.class)));
 
         for (Module module : modules) {
             Assert.assertTrue("The Module is a spy!", module.getClass().equals(Example3Module.class));
@@ -200,6 +204,10 @@ public class ModuleTest {
     @Retention(RetentionPolicy.RUNTIME)
     public @interface ItsAKeeper {
         // yay
+    }
+
+    public interface IgnoreMe {
+        // boo
     }
 
 }
