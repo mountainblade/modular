@@ -219,6 +219,11 @@ public final class ModuleLoader extends Destroyable {
      * @return A module instance or null if it could not be loaded properly
      */
     public Module loadModule(ModuleManager moduleManager, ClassEntry classEntry) {
+        if (classEntry == null) {
+            LOG.warning("Tried to load invalid module");
+            return null;
+        }
+
         // Try to get "from cache" first. We do not allow two modules be activated at the same time, so lets use that
         Module module = registry.getModule(classEntry.getImplementation());
         if (module != null) {

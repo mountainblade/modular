@@ -157,7 +157,7 @@ public class Injector extends Destroyable {
                     }
 
                     for (Annotation annotationImpl : (Collection<Annotation>) builder.annotations) {
-                        final Annotation fieldAnnotation = field.getAnnotation(annotationImpl.getClass());
+                        final Annotation fieldAnnotation = field.getAnnotation(annotationImpl.annotationType());
                         if (!annotationImpl.equals(fieldAnnotation)) {
                             continue fields;
                         }

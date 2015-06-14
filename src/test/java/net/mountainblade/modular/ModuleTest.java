@@ -37,6 +37,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.net.URL;
@@ -183,6 +184,34 @@ public class ModuleTest {
         Assert.assertEquals(1, modules.size());
     }
 
+    @Test
+    public void testInjections() throws Exception {
+        final DefaultModuleManager manager = new DefaultModuleManager();
+        manager.getInjector().inject(String.class).marked(new Author() {
+            @Override
+            public String value() {
+                return "John Doe";
+            }
+
+            @Override
+            public Class<? extends Annotation> annotationType() {
+                return Author.class;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (!(o instanceof Author)) {
+                    return false;
+                }
+
+                Author other = (Author) o;
+                return value().equals(other.value());
+            }
+        }).with("john@doe.net");
+
+        final Example4Module module = manager.loadModule(Example4Module.class);
+        Assert.assertNotNull(module.email);
+    }
 
     /**
      * The third example module, this time in-lined.
@@ -204,9 +233,30 @@ public class ModuleTest {
 
     }
 
+    @Implementation
+    public static class Example4Module implements Module {
+        @Inject
+        private Logger logger;
+
+        @Inject
+        @Author("John Doe")
+        private String email;
+
+        @Initialize
+        private void init() {
+            logger.info("Email address of John Doe is " + email);
+        }
+
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     public @interface ItsAKeeper {
         // yay
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Author {
+        String value();
     }
 
     public interface IgnoreMe {
