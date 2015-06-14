@@ -76,6 +76,7 @@ public final class ModuleLoader extends Destroyable {
         this.injector = injector;
 
         ignores = new THashSet<>();
+        setLoadingStrategy(ParentFirstStrategy.class);
     }
 
     /**
