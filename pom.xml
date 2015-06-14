@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (C) 2014 MountainBlade (http://mountainblade.net)
+    Copyright (C) 2014-2015 MountainBlade (http://mountainblade.net)
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -118,15 +118,12 @@
                     </dependency>
                 </dependencies>
                 <configuration>
-                    <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
+                    <header>LICENSE.txt</header>
                     <excludes>
                         <exclude>**/README</exclude>
                         <exclude>src/test/resources/**</exclude>
                         <exclude>src/main/resources/**</exclude>
                     </excludes>
-                    <includes>
-                        <include>LICENSE.txt</include>
-                    </includes>
                     <properties>
                         <owner>${project.organization.name}</owner>
                         <email>${project.organization.url}</email>
