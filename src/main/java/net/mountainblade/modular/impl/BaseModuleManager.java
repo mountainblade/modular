@@ -163,7 +163,7 @@ public class BaseModuleManager implements ModuleManager {
 
         // Inject dependencies if specified
         if (inject) {
-            loader.injectAndInitialize(this, module, information, moduleEntry);
+            loader.injectAndInitialize(this, module, information);
         }
 
         // Register module
@@ -251,7 +251,7 @@ public class BaseModuleManager implements ModuleManager {
             }
 
             for (Injector.Entry dependencyEntry : classEntry.getDependencies()) {
-                addDependency(classEntry, node, dependencyEntry.getModule(), nodes, sortedCandidates);
+                addDependency(classEntry, node, dependencyEntry.getDependency(), nodes, sortedCandidates);
             }
 
             for (Class<? extends Module> moduleClass : classEntry.getRequirements()) {

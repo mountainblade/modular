@@ -227,6 +227,7 @@ public final class ModuleLoader extends Destroyable {
         // Seems like we haven't loaded that module before, so let's get started
         final ModuleInformationImpl information = new ModuleInformationImpl(classEntry.getAnnotation());
         final ModuleRegistry.Entry moduleEntry = registry.createEntry(classEntry.getModule(), information);
+        registry.addModule(classEntry.getImplementation(), moduleEntry, true);
 
         try {
             // Instantiate module
@@ -235,7 +236,7 @@ public final class ModuleLoader extends Destroyable {
             module = constructor.newInstance();
 
             // Set to load and initialize the module
-            injectAndInitialize(moduleManager, module, information, moduleEntry);
+            injectAndInitialize(moduleManager, module, information);
 
             // Set to ready and add to registry, but also add the instance in "ghost mode"
             registerEntry(classEntry, module, information, moduleEntry);
@@ -258,16 +259,14 @@ public final class ModuleLoader extends Destroyable {
      * @param manager        The module manager to use
      * @param module         The module in context
      * @param information    The module's information instance
-     * @param moduleEntry    The registry entry
      */
-    public void injectAndInitialize(ModuleManager manager, Module module, ModuleInformationImpl information,
-                                    ModuleRegistry.Entry moduleEntry) {
+    public void injectAndInitialize(ModuleManager manager, Module module, ModuleInformationImpl information) {
         try {
             // Set to loading state
             information.setState(ModuleState.LOADING);
 
             // Inject dependencies
-            injector.inject(moduleEntry, module, this);
+            injector.inject(module);
 
             // Call initialize method
             Annotations.call(module, Initialize.class, 0, new Class[]{ModuleManager.class}, manager);
@@ -294,7 +293,6 @@ public final class ModuleLoader extends Destroyable {
         moduleEntry.setModule(module);
 
         registry.addModule(classEntry.getModule(), moduleEntry, false);
-        registry.addModule(classEntry.getImplementation(), moduleEntry, true);
     }
 
     /**

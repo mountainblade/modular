@@ -19,8 +19,10 @@ import net.mountainblade.modular.Module;
 import net.mountainblade.modular.ModuleInformation;
 import net.mountainblade.modular.annotations.Inject;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -31,76 +33,84 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Represents the dependency Injector for module dependencies (only affects fields).
+ * Represents a dependency Injector for various kinds of dependencies (only affects fields).
  *
  * @author spaceemotion
  * @version 1.0
  */
-public final class Injector extends Destroyable {
+public class Injector extends Destroyable {
     private static final Logger LOG = Logger.getLogger(Injector.class.getName());
 
     private final Map<Class<? extends Module>, Collection<Entry>> cache;
-    private final List<Support> supports;
-
     private final ModuleRegistry registry;
+    private final List<Builder> builders;
 
 
     Injector(ModuleRegistry registry) {
         this.registry = registry;
-
-        this.supports = new LinkedList<>();
+        this.builders = new LinkedList<>();
         this.cache = new ConcurrentHashMap<>();
 
-        addSupport(new EntryConstructor() {
-            @Override
-            public Entry construct(Inject annotation, Class<? extends Module> module, Field field) {
-                return new LoggerEntry(annotation, module, field);
-            }
-        }, Logger.class, true);
-
-        addSupport(new EntryConstructor() {
-            @Override
-            public Entry construct(Inject annotation, Class<? extends Module> module, Field field) {
-                return new InformationEntry(annotation, module, field);
-            }
-        }, ModuleInformation.class, true);
-
-        addSupport(new EntryConstructor() {
-            @Override
-            @SuppressWarnings("unchecked")
-            public Entry construct(Inject annotation, Class<? extends Module> module, Field field) {
-                return new ModuleEntry(annotation, (Class<? extends Module>) field.getType(), field);
-            }
-        }, Module.class, false);
+        // Destroy to initialize with defaults
+        destroy();
     }
 
-    public void addSupport(EntryConstructor entry, Class classToMatch, boolean exactMatch) {
-        supports.add(new Support(entry, classToMatch, exactMatch));
+    /**
+     * Creates a new injection builder to set up a new field injection configuration.
+     *
+     * @param fieldClass    The type of fields this configuration / builder should affect
+     * @param <T>           The type of the field, used to limit instances to their proper type
+     * @return A new type-safe builder
+     */
+    public <T> Builder<T> inject(Class<T> fieldClass) {
+        return new Builder<>(fieldClass);
     }
 
-    public void removeSupport(EntryConstructor entry) {
-        supports.remove(entry);
+    /**
+     * Injects the given module registry entry with its dependencies.
+     *
+     * @param moduleEntry    The entry to inject
+     * @throws InjectFailedException
+     */
+    public void inject(ModuleRegistry.Entry moduleEntry) throws InjectFailedException {
+        inject(moduleEntry.getModule());
     }
 
-    public Collection<Entry> discover(Class<? extends Module> implementationClass) {
-        Collection<Entry> entries = cache.get(implementationClass);
+    /**
+     * Injects the given module instance with its dependencies.
+     *
+     * @param module    The module instance
+     * @throws InjectFailedException
+     */
+    public void inject(Module module) throws InjectFailedException {
+        for (Entry entry : discover(module.getClass())) {
+            if (entry == null) {
+                continue;
+            }
+
+            entry.apply(module);
+        }
+    }
+
+    Collection<Entry> discover(Class<? extends Module> moduleClass) {
+        Collection<Entry> entries = cache.get(moduleClass);
 
         if (entries == null) {
             entries = new LinkedList<>();
 
             // Discover normal class fields
-            discover(implementationClass, entries, implementationClass.getDeclaredFields());
+            discover(moduleClass, entries, moduleClass.getDeclaredFields());
 
             // Also discover fields from superclass
-            Class superClass = implementationClass.getSuperclass();
+            Class superClass = moduleClass.getSuperclass();
 
             while (superClass != null && !superClass.equals(Class.class)) {
-                discover(implementationClass, entries, superClass.getDeclaredFields());
+                discover(moduleClass, entries, superClass.getDeclaredFields());
                 superClass = superClass.getSuperclass();
             }
 
             // Add our entries to the cache
-            cache.put(implementationClass, entries);
+            cache.put(moduleClass, entries);
         }
 
         return entries;
@@ -108,7 +118,7 @@ public final class Injector extends Destroyable {
 
     @SuppressWarnings("unchecked")
     private void discover(Class<? extends Module> implementationClass, Collection<Entry> entries, Field[] fields) {
-        for (Field field : fields) {
+        fields: for (Field field : fields) {
             // We do not want static fields
             if (Modifier.isStatic(field.getModifiers())) {
                 continue;
@@ -129,23 +139,40 @@ public final class Injector extends Destroyable {
                 // Loop through our supports in reverse order to account for class overwrites
                 boolean added = false;
 
-                for (ListIterator<Support> iterator = supports.listIterator(supports.size()); iterator.hasPrevious();) {
-                    final Support support = iterator.previous();
+                for (ListIterator<Builder> iterator = builders.listIterator(builders.size()); iterator.hasPrevious();) {
+                    final Builder builder = iterator.previous();
 
                     // Check if we got a match
-                    if (!(support.exactMatch ? support.classEntry.equals(fieldType) :
-                                                    support.classEntry.isAssignableFrom(fieldType))) {
+                    if (!(builder.exactMatch ? builder.fieldClass.equals(fieldType) :
+                            builder.fieldClass.isAssignableFrom(fieldType))) {
                         continue;
                     }
 
-                    // We found an injector, let's use that
+                    // Check requirements (god I hate type erasure)
+                    for (Class<? extends Annotation> annotationClass :
+                            (Collection<Class<? extends Annotation>>) builder.annotationClasses) {
+                        if (field.getAnnotation(annotationClass) == null) {
+                            continue fields;
+                        }
+                    }
+
+                    for (Annotation annotationImpl : (Collection<Annotation>) builder.annotations) {
+                        final Annotation fieldAnnotation = field.getAnnotation(annotationImpl.getClass());
+                        if (!annotationImpl.equals(fieldAnnotation)) {
+                            continue fields;
+                        }
+                    }
+
+                    // We found an injector, let's use it
                     final Class<? extends Module> from = annotation.from();
                     final boolean useFrom = !from.equals(Inject.Current.class);
                     if (useFrom) {
                         checkModuleField(implementationClass, from);
                     }
 
-                    entries.add(support.constructor.construct(annotation, useFrom ? from : implementationClass, field));
+                    entries.add(new Entry(useFrom ? from : Module.class.isAssignableFrom(fieldType) ?
+                            (Class<? extends Module>) fieldType : implementationClass,
+                            builder, annotation, field, useFrom));
                     added = true;
                 }
 
@@ -171,151 +198,195 @@ public final class Injector extends Destroyable {
         }
     }
 
-    public void inject(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader)
-            throws InjectFailedException {
-        final Class<? extends Module> implementationClass = module.getClass();
-
-        // Loop through the entries and inject the dependencies
-        for (Entry entry : discover(implementationClass)) {
-            if (entry != null && !entry.apply(moduleEntry, module, loader)) {
-                throw new InjectFailedException("Failed to inject dependencies: " + entry.getModule());
-            }
-        }
-    }
-
     @Override
     protected void destroy() {
         cache.clear();
+        builders.clear();
+
+        // Reset default injectors
+        inject(Logger.class).with(new Constructor<Logger>() {
+            @Override
+            public Logger construct(Inject annotation, Class<? extends Logger> type, Module module) {
+                return Logger.getLogger(module.getClass().getName());
+            }
+        });
+        inject(Module.class).with(new Constructor<Module>() {
+            @Override
+            public Module construct(Inject annotation, Class<? extends Module> type, Module module) {
+                return registry.getModule(type);
+            }
+        });
+        inject(ModuleInformation.class).with(new Constructor<ModuleInformation>() {
+            @Override
+            public ModuleInformation construct(Inject annotation, Class<? extends ModuleInformation> type, Module module) {
+                return registry.getInformation(module.getClass());
+            }
+        });
     }
 
 
-    private static class Support {
-        private final EntryConstructor constructor;
-        private final Class classEntry;
-        private final boolean exactMatch;
-
-
-        private Support(EntryConstructor constructor, Class classEntry, boolean exactMatch) {
-            this.constructor = constructor;
-            this.exactMatch = exactMatch;
-            this.classEntry = classEntry;
-        }
-    }
-
-    public interface EntryConstructor {
-        Entry construct(Inject annotation, Class<? extends Module> module, Field field);
-    }
-
-    public static abstract class Entry {
-        private final String type;
-
-        private final Class<? extends Module> module;
+    class Entry {
+        private final Class<? extends Module> dependency;
+        private final Builder builder;
         private final Inject annotation;
         private final Field field;
+        private final boolean useFrom;
 
 
-        protected Entry(String type, Inject annotation, Class<? extends Module> module, Field field) {
-            this.type = type;
-
+        Entry(Class<? extends Module> dependency, Builder builder, Inject annotation, Field field, boolean useFrom) {
+            this.dependency = dependency;
+            this.builder = builder;
             this.annotation = annotation;
-            this.module = module;
             this.field = field;
+            this.useFrom = useFrom;
         }
 
-        public final Class<? extends Module> getModule() {
-            return module;
+        public Class<? extends Module> getDependency() {
+            return dependency;
         }
 
-        public final Inject getAnnotation() {
-            return annotation;
-        }
-
-        public final Field getField() {
-            return field;
-        }
-
-        protected abstract boolean apply(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader);
-
-        protected boolean injectField(Module module, Object object) {
-            if (object != null) {
-                try {
-                    field.setAccessible(true);
-                    field.set(module, object);
-                    return true;
-
-                } catch (IllegalAccessException e) {
-                    LOG.log(Level.SEVERE, "Could not inject module with " + type, e);
-                }
-            }
-
-            return getAnnotation().optional();
-        }
-
-    }
-
-    public final class LoggerEntry extends Entry {
-
-        protected LoggerEntry(Inject annotation, Class<? extends Module> module, Field field) {
-            super("logger", annotation, module, field);
-        }
-
-        @Override
-        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader) {
-            Logger logger = moduleEntry.getLogger();
-
-            if (logger == null) {
-                logger = Logger.getLogger(module.getClass().getName());
-                moduleEntry.setLogger(logger);
-            }
-
-            return injectField(module, logger);
-        }
-
-    }
-
-    public final class InformationEntry extends Entry {
-
-        protected InformationEntry(Inject annotation, Class<? extends Module> module, Field field) {
-            super("module information", annotation, module, field);
-        }
-
-        @Override
-        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader) {
-            return injectField(module, (!getAnnotation().from().equals(Inject.Current.class) ?
-                    registry.getEntry(getModule()) : moduleEntry).getInformation());
-        }
-
-    }
-
-    public final class ModuleEntry extends Entry {
-
-        protected ModuleEntry(Inject annotation, Class<? extends Module> module, Field field) {
-            super("module dependency", annotation, module, field);
-        }
-
-        @Override
         @SuppressWarnings("unchecked")
-        protected boolean apply(ModuleRegistry.Entry moduleEntry, Module module, ModuleLoader loader) {
-            Class<?> superclass = getField().getType();
-            Module dependency;
+        private void apply(Module module) throws InjectFailedException {
+            final Module theModule = useFrom ? registry.getModule(dependency) : module;
+            if (theModule == null) {
+                throw new InjectFailedException("Could not get module for " + dependency);
+            }
 
-            do {
-                dependency = registry.getModule((Class<? extends Module>) superclass);
-
-                // Exit when the superclass is not a module anymore
-                final Class<?> fieldTypeSuperclass = superclass.getSuperclass();
-                if (fieldTypeSuperclass == null || !Module.class.isAssignableFrom(fieldTypeSuperclass)) {
-                    break;
+            final Object object = builder.constructor.construct(annotation, field.getType(), theModule);
+            if (object == null) {
+                if (!annotation.optional() && !builder.nullable) {
+                    final int modifiers = field.getModifiers();
+                    final Type fieldType = field.getGenericType();
+                    throw new InjectFailedException("Could not inject " + theModule.getClass() + " with null object " +
+                            "for field \"" + (((modifiers == 0) ? "" : (Modifier.toString(modifiers) + " ")) +
+                            fieldType.getTypeName()) + " " + field.getName() + '"');
                 }
 
-                // Continue with new superclass
-                superclass = fieldTypeSuperclass;
+                return;
+            }
 
-            } while (dependency == null);
+            try {
+                field.setAccessible(true);
+                field.set(module, object);
 
-            return injectField(module, dependency);
+            } catch (IllegalAccessException e) {
+               throw new InjectFailedException("Could not inject " + dependency + " with " + field.getType(), e);
+            }
         }
 
+    }
+
+    /**
+     * Represents an injection builder.
+     *
+     * @param <T>    The type of instances we provide / construct
+     */
+    public class Builder<T> {
+        private final Class<T> fieldClass;
+        private final Collection<Class<? extends Annotation>> annotationClasses;
+        private final Collection<Annotation> annotations;
+        private Constructor<? extends T> constructor;
+        private boolean nullable;
+        private boolean exactMatch;
+
+
+        Builder(Class<T> fieldClass) {
+            this.fieldClass = fieldClass;
+            this.annotationClasses = new LinkedList<>();
+            this.annotations = new LinkedList<>();
+        }
+
+        /**
+         * Sets the injected instance to always be the given one.
+         *
+         * @param instance    The instance we should populate the field with
+         */
+        public void with(final T instance) {
+            with(new Constructor<T>() {
+                @Override
+                public T construct(Inject annotation, Class<? extends T> type, Module module) {
+                    return instance;
+                }
+            });
+        }
+
+        /**
+         * Sets the constructor to the given instance and adds this builder to the registry.
+         *
+         * @param constructor    The instance constructor
+         */
+        public void with(Constructor<? extends T> constructor) {
+            this.constructor = constructor;
+            builders.add(this);
+        }
+
+        /**
+         * Marks this configuration as "nullable".
+         * It will not throw an exception, even if the returned instance is null.
+         *
+         * @return This builder to allow for method chaining
+         */
+        public Builder<T> nullable() {
+            this.nullable = true;
+            return this;
+        }
+
+        /**
+         * Marks this configuration to restrict the field type to be exactly the given one.
+         *
+         * If this builder's field type was set to {@code MyPlugin.class} and the "exactly" flag set to true
+         * this will only affect fields that have its type set to that, and will ignore fields using subclasses
+         * of the plugin's class.
+         *
+         * @return This builder to allow for method chaining
+         */
+        public Builder<T> exactly() {
+            this.exactMatch = true;
+            return this;
+        }
+
+        /**
+         * Adds the given annotation instance to the required annotations.
+         * This method can be called multiple times to add multiple annotation requirements.
+         *
+         * @param annotation    An annotation implementation to check against
+         * @return This builder to allow for method chaining
+         */
+        public Builder<T> marked(Annotation annotation) {
+            this.annotations.add(annotation);
+            return this;
+        }
+
+        /**
+         * Adds the given annotation type to the required annotations.
+         * This method can be called multiple times to add multiple annotation requirements.
+         *
+         * @param annotation    An annotation class
+         * @return This builder to allow for method chaining
+         */
+        public Builder<T> marked(Class<? extends Annotation> annotation) {
+            this.annotationClasses.add(annotation);
+            return this;
+        }
+
+    }
+
+    /**
+     * Represents an instance constructor.
+     * Is used when injecting fields with instances.
+     *
+     * @param <T>    The type of the instance
+     */
+    public interface Constructor<T> {
+        /**
+         * Constructs (or provides) an instance of the set type.
+         *
+         * @param annotation    The {@link Inject} field annotation.
+         * @param type          The field's type
+         * @param module        The module instance
+         * @return An instance, but also allows null
+         */
+        T construct(Inject annotation, Class<? extends T> type, Module module);
     }
 
 }

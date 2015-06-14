@@ -27,4 +27,8 @@ public class InjectFailedException extends Exception {
         super(message);
     }
 
+    public InjectFailedException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
 }
