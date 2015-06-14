@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Represents a registry for modules. It also stores all additional instances that belong to that module.
@@ -177,7 +176,6 @@ public class ModuleRegistry extends Destroyable {
         private final ModuleInformation information;
         private final Class<? extends Module> moduleClass;
         private Module module;
-        private Logger logger;
 
 
         private Entry(ModuleInformation information, Class<? extends Module> moduleClass) {
@@ -216,19 +214,6 @@ public class ModuleRegistry extends Destroyable {
             this.module = module;
         }
 
-        /**
-         * Gets the dedicated logger for the implementation module.
-         *
-         * @return A logger instance
-         */
-        public Logger getLogger() {
-            return logger;
-        }
-
-        void setLogger(Logger logger) {
-            this.logger = logger;
-        }
-
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -237,7 +222,6 @@ public class ModuleRegistry extends Destroyable {
             Entry entry = (Entry) o;
 
             return information.equals(entry.information) &&
-                    !(logger != null ? !logger.equals(entry.logger) : entry.logger != null) &&
                     !(module != null ? !module.equals(entry.module) : entry.module != null) &&
                     moduleClass.equals(entry.moduleClass);
         }
@@ -245,13 +229,12 @@ public class ModuleRegistry extends Destroyable {
         @Override
         public int hashCode() {
             return 31 * (31 * (31 * information.hashCode() + moduleClass.hashCode()) +
-                    (module != null ? module.hashCode() : 0)) + (logger != null ? logger.hashCode() : 0);
+                    (module != null ? module.hashCode() : 0));
         }
 
         @Override
         public String toString() {
-            return "Entry{information=" + information + ", moduleClass=" + moduleClass +
-                    ", module=" + module + '}';
+            return "Entry{information=" + information + ", moduleClass=" + moduleClass + ", module=" + module + '}';
         }
 
     }
