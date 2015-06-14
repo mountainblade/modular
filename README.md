@@ -3,9 +3,23 @@
 Lightweight, annotation-driven modular dependency system for java applications with integrated field-based dependency
 injection (inspired by [jSPF](https://code.google.com/p/jspf) and other java plugin systems).
 
-# Usage guide
-It is assumed that it is known how one installs a maven dependency as this project uses that as its build system.
+A copy of modular can be retrieved through maven. It is assumed that it is known how one installs a custom maven
+repository and dependency as this project uses that build system.
 
+```xml
+<repository>
+    <id>modular</id>
+    <url>http://repo.serkprojects.com/content/groups/public/</url>
+</repository>
+
+<dependency>
+    <groupId>net.mountainblade</groupId>
+    <artifactId>modular</artifactId>
+    <version>1.0-SNAPSHOT</version>
+</dependency>
+```
+
+# Usage guide
 ## First steps
 To create the simplest of all implementations, just import the project into your workspace / setup.
 Modular needs at least one manager and one module to work.
