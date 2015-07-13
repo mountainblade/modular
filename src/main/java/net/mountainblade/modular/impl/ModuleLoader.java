@@ -171,6 +171,8 @@ public final class ModuleLoader extends Destroyable {
                         LOG.log(Level.INFO, "Could not load class that was available at compile time for: " + className +
                                 "! This often seems to be a problem with shading, please check the classes / build script", e);
                     }
+                } catch (SecurityException e2) {
+                    LOG.log(Level.WARNING, "Could not load class due to security exception: " + className, e2);
                 }
             }
 

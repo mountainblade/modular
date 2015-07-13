@@ -410,6 +410,10 @@ public class BaseModuleManager implements ModuleManager {
                     String name = entry.getName();
                     if (!entry.isDirectory() && name.endsWith(".class")) {
                         name = getProperClassName(name);
+                        if (name.endsWith("package-info")) {
+                            continue;
+                        }
+
                         classes.add(name);
 
                         if (name.startsWith(packageName)) {
@@ -485,10 +489,12 @@ public class BaseModuleManager implements ModuleManager {
                 }
 
                 final String className = getProperClassName(substring);
-                classNames.add(className);
-                list.add(className);
+                if (!className.equalsIgnoreCase("package-info")) {
+                    classNames.add(className);
+                    list.add(className);
 
-                addUriToRealm(rootUri);
+                    addUriToRealm(rootUri);
+                }
             }
         }
     }
@@ -684,7 +690,7 @@ public class BaseModuleManager implements ModuleManager {
             }
 
             entry = next.toString();
-            if (entry.startsWith(JAVA_HOME)) {
+            if (entry.contains(JAVA_HOME)) {
                 iterator.remove();
                 continue;
             }
