@@ -16,6 +16,7 @@
 package net.mountainblade.modular.impl;
 
 import com.google.common.base.Optional;
+import gnu.trove.iterator.hash.TObjectHashIterator;
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.THashSet;
 import net.mountainblade.modular.Filter;
@@ -65,10 +66,21 @@ public class BaseModuleManager implements ModuleManager {
     private static final Collection<String> BLACKLIST = new THashSet<>();
     private static final Collection<URI> URI_BLACKLIST = new THashSet<>();
     private static boolean thoroughSearchEnabled;
+    static boolean includedFullClassPath;
 
     static {
         Collections.addAll(BLACKLIST, ".git", ".idea");
+
+        final String additionalBlacklist = System.getProperty("modular.blacklist");
+        if (additionalBlacklist != null) {
+            Collections.addAll(BLACKLIST, additionalBlacklist.split(File.pathSeparator));
+        }
+
         enableThoroughSearch(System.getProperty("modular.thoroughSearch") != null);
+
+        if (System.getProperty("modular.includeFullClassPath") != null) {
+            includeFullClassPath();
+        }
     }
 
     private final Collection<Destroyable> destroyables;
@@ -99,7 +111,7 @@ public class BaseModuleManager implements ModuleManager {
      */
     public BaseModuleManager(ModuleRegistry registry, ClassRealm realm) {
         this.destroyables = new LinkedList<>();
-        this.classpath = new THashSet<>(LOCAL_CLASSPATH);
+        this.classpath = createClassPathSet(LOCAL_CLASSPATH);
 
         this.registry = registry;
         this.injector = new Injector(registry);
@@ -580,6 +592,33 @@ public class BaseModuleManager implements ModuleManager {
     }
 
     /**
+     * Adds the given URIs to the local classpath which will be checked when loading modules.
+     *
+     * @param uris    The URIs to add
+     */
+    public static void include(URI... uris) {
+        Collections.addAll(LOCAL_CLASSPATH, uris);
+    }
+
+    /**
+     * Includes all elements in the current java class path as retrieved by the "java.class.path" system property.
+     *
+     * This should only be used when the application is using some black magic and changes the class loader on startup.
+     * It is also recommended to only use this method without thorough search.
+     */
+    public static void includeFullClassPath() {
+        final String[] paths = System.getProperty("java.class.path", "").split(File.pathSeparator);
+        final URI[] uris = new URI[paths.length];
+
+        for (int i = 0; i < paths.length; i++) {
+            uris[i] = new File(paths[i]).toURI();
+        }
+
+        include(uris);
+        includedFullClassPath = true;
+    }
+
+    /**
      * Toggles the state of the "thorough search" mode.
      *
      * This mode was an internal first solution to a problem that, when running the application
@@ -630,6 +669,35 @@ public class BaseModuleManager implements ModuleManager {
      */
     public static boolean thoroughSearchEnabled() {
         return thoroughSearchEnabled;
+    }
+
+    private static Collection<URI> createClassPathSet(List<URI> uris) {
+        final THashSet<URI> classPath = new THashSet<>(uris);
+        final TObjectHashIterator<URI> iterator = classPath.iterator();
+
+        URI next;
+        String entry;
+        iterate: while (iterator.hasNext()) {
+            next = iterator.next();
+            if (next == null) {
+                continue;
+            }
+
+            entry = next.toString();
+            if (entry.startsWith(JAVA_HOME)) {
+                iterator.remove();
+                continue;
+            }
+
+            for (String blacklisted : BLACKLIST) {
+                if (entry.contains(blacklisted)) {
+                    iterator.remove();
+                    continue iterate;
+                }
+            }
+        }
+
+        return classPath;
     }
 
 }
