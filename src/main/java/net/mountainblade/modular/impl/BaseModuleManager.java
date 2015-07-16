@@ -402,7 +402,7 @@ public class BaseModuleManager implements ModuleManager {
             final Collection<String> classes = new LinkedList<>();
             final String scheme = uri.getSchemeSpecificPart();
             final int divider = scheme.indexOf("!/");
-            file = new File(divider < 0 ? scheme : scheme.substring(0, divider));
+            file = new File(divider < 0 ? scheme : scheme.substring(0, divider).replace("file:", ""));
 
             // Get appropriate class names by removing trailing .class and convert the file name to a usable class name
             try (ZipInputStream zip = new ZipInputStream(new FileInputStream(file))) {
@@ -422,7 +422,7 @@ public class BaseModuleManager implements ModuleManager {
                     }
                 }
             } catch (IOException e) {
-                throw new RuntimeException("Could not fetch JAR file contents: " + uri, e);
+                throw new RuntimeException("Could not fetch JAR file contents: " + uri + " (using " + file + ')', e);
             }
 
             // Add processed classes to the cache
