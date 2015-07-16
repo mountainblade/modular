@@ -640,31 +640,29 @@ public class BaseModuleManager implements ModuleManager {
         thoroughSearchEnabled = toggle;
         LOCAL_CLASSPATH.clear();
 
-        try {
-            if (toggle) {
-                // Add full runtime classpath
-                addUrls: for (URL url: ((URLClassLoader) ClassLoader.getSystemClassLoader()).getURLs()) {
-                    final String path = url.getPath();
-                    if (path.startsWith(JAVA_HOME)) {
-                        continue;
-                    }
+        final Class<BaseModuleManager> baseClass = BaseModuleManager.class;
+        final ClassLoader classLoader = baseClass.getClassLoader();
 
-                    for (String blacklisted : BLACKLIST) {
-                        if (path.contains(blacklisted)) {
-                            break addUrls;
-                        }
-                    }
+        addToLocalClassPath(classLoader.getResource("."), findClassLoaderRootURL(baseClass));
 
-                    LOCAL_CLASSPATH.add(url.toURI());
+        if (toggle && classLoader instanceof URLClassLoader) {
+            // Add full runtime classpath
+            String path;
+            addUrls: for (URL url: ((URLClassLoader) classLoader).getURLs()) {
+                path = url.getPath();
+                if (path.startsWith(JAVA_HOME)) {
+                    continue;
                 }
-            } else {
-                // Only add the current folder / jar as root
-                final URL resource = ClassLoader.getSystemClassLoader().getResource(".");
-                if (resource != null) {
-                    LOCAL_CLASSPATH.add(resource.toURI());
+
+                for (String blacklisted : BLACKLIST) {
+                    if (path.contains(blacklisted)) {
+                        break addUrls;
+                    }
                 }
+
+                addToLocalClassPath(url);
             }
-        } catch (URISyntaxException ignore) {}
+        }
     }
 
     /**
@@ -675,6 +673,45 @@ public class BaseModuleManager implements ModuleManager {
      */
     public static boolean thoroughSearchEnabled() {
         return thoroughSearchEnabled;
+    }
+
+    /**
+     * Adds the given url(s) as URIs to the local class path.
+     * This needs to be done before a manager gets created as each manager holds a modified copy of the static list.
+     *
+     * @param urls    The url(s) to add
+     */
+    public static void addToLocalClassPath(URL... urls) {
+        for (URL path : urls) {
+            if (path == null) {
+                continue;
+            }
+
+            try {
+                LOCAL_CLASSPATH.add(path.toURI());
+
+            } catch (URISyntaxException ignore) {}
+        }
+    }
+
+    /**
+     * Tries to find the root URL from the given class by getting the full URL to the class file itself first,
+     * then removing the additional path again.
+     *
+     * @param aClass    The class to get the URL for
+     * @return The class loader's root URL, or null if none could be found
+     */
+    public static URL findClassLoaderRootURL(Class aClass) {
+        final String prefix = aClass.getCanonicalName().replace('.', '/') + ".class";
+        final URL resource = aClass.getClassLoader().getResource(prefix);
+
+        try {
+            if (resource != null) {
+                return new URL(resource.toString().replace(prefix, ""));
+            }
+        } catch (MalformedURLException ignore) {}
+
+        return null;
     }
 
     private static Collection<URI> createClassPathSet(List<URI> uris) {
