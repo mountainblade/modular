@@ -151,16 +151,17 @@ public final class ModuleLoader extends Destroyable {
             boolean hasValidModule = false;
 
             for (String className : entry.getValue()) {
+                if (!list.contains(className)) {
+                    continue;
+                }
+
                 try {
                     final Class<?> aClass = realm.loadClass(className);
 
                     // We can safely ignore any interfaces, since we only want to get implementations
                     if (isValidModuleClass(aClass)) {
                         hasValidModule = true;
-
-                        if (list.contains(className)) {
-                            candidates.add((Class<? extends Module>) aClass);
-                        }
+                        candidates.add((Class<? extends Module>) aClass);
                     }
 
                 } catch (ClassNotFoundException e1) {

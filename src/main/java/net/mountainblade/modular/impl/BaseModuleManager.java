@@ -406,18 +406,21 @@ public class BaseModuleManager implements ModuleManager {
 
             // Get appropriate class names by removing trailing .class and convert the file name to a usable class name
             try (ZipInputStream zip = new ZipInputStream(new FileInputStream(file))) {
+                String name;
+                String properName;
                 for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
-                    String name = entry.getName();
+                    name = entry.getName();
+
                     if (!entry.isDirectory() && name.endsWith(".class")) {
-                        name = getProperClassName(name);
-                        if (name.endsWith("package-info")) {
+                        properName = getProperClassName(name);
+                        if (properName.endsWith("package-info")) {
                             continue;
                         }
 
-                        classes.add(name);
+                        classes.add(properName);
 
                         if (name.startsWith(packageName)) {
-                            list.add(name);
+                            list.add(properName);
                         }
                     }
                 }
