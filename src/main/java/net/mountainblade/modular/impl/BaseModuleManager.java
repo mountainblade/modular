@@ -448,13 +448,10 @@ public class BaseModuleManager implements ModuleManager {
         }
 
         // Continue to look up valid files within the directory
-        loop: for (File file : listFiles) {
+        for (File file : listFiles) {
             final String name = file.getName();
-
-            for (String blacklisted : BLACKLIST) {
-                if (name.equalsIgnoreCase(blacklisted)) {
-                    continue loop;
-                }
+            if (isBlacklisted(name)) {
+                continue;
             }
 
             // Check if the current file is a directory, and if it is, check if its a classpath (and thus a root)
@@ -597,7 +594,7 @@ public class BaseModuleManager implements ModuleManager {
      * @param name    The name of the directory or file
      */
     public static void blacklist(String name) {
-        BLACKLIST.add(name);
+        BLACKLIST.add(name.toLowerCase());
     }
 
     /**
@@ -651,19 +648,15 @@ public class BaseModuleManager implements ModuleManager {
         if (toggle && classLoader instanceof URLClassLoader) {
             // Add full runtime classpath
             String path;
-            addUrls: for (URL url: ((URLClassLoader) classLoader).getURLs()) {
+            for (URL url: ((URLClassLoader) classLoader).getURLs()) {
                 path = url.getPath();
                 if (path.startsWith(JAVA_HOME)) {
                     continue;
                 }
 
-                for (String blacklisted : BLACKLIST) {
-                    if (path.contains(blacklisted)) {
-                        break addUrls;
-                    }
+                if (!isBlacklisted(path)) {
+                    addToLocalClassPath(url);
                 }
-
-                addToLocalClassPath(url);
             }
         }
     }
@@ -723,7 +716,7 @@ public class BaseModuleManager implements ModuleManager {
 
         URI next;
         String entry;
-        iterate: while (iterator.hasNext()) {
+        while (iterator.hasNext()) {
             next = iterator.next();
             if (next == null) {
                 continue;
@@ -735,15 +728,24 @@ public class BaseModuleManager implements ModuleManager {
                 continue;
             }
 
-            for (String blacklisted : BLACKLIST) {
-                if (entry.contains(blacklisted)) {
-                    iterator.remove();
-                    continue iterate;
-                }
+            if (isBlacklisted(entry)) {
+                iterator.remove();
             }
         }
 
         return classPath;
+    }
+
+    private static boolean isBlacklisted(String name) {
+        name = name.toLowerCase();
+
+        for (String blacklisted : BLACKLIST) {
+            if (name.contains(blacklisted)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }
