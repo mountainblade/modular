@@ -419,7 +419,7 @@ public class BaseModuleManager implements ModuleManager {
 
                         classes.add(properName);
 
-                        if (name.startsWith(packageName)) {
+                        if (properName.startsWith(packageName) || name.startsWith(packageName)) {
                             list.add(properName);
                         }
                     }
