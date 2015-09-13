@@ -142,12 +142,12 @@
 
     <distributionManagement>
         <repository>
-            <id>serkprojects</id>
+            <id>serkprojects-private</id>
             <name>Internal Releases</name>
             <url>http://repo.serkprojects.com/content/repositories/releases/</url>
         </repository>
         <snapshotRepository>
-            <id>serkprojects</id>
+            <id>serkprojects-private</id>
             <name>Internal Releases</name>
             <url>http://repo.serkprojects.com/content/repositories/snapshots/</url>
         </snapshotRepository>
