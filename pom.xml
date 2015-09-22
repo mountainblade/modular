@@ -53,7 +53,7 @@
     <scm>
         <connection>scm:git:github.com:mountainblade/modular.git</connection>
         <developerConnection>scm:git:github.com:mountainblade/modular.git</developerConnection>
-        <url>https://github.com/mountainblade/modular</url>
+        <url>git@github.com:mountainblade/modular.git</url>
     </scm>
 
     <licenses>
