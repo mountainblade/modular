@@ -44,15 +44,28 @@ import java.lang.annotation.Target;
 public @interface Implementation {
 
     /**
-     * The class for the module we want to implement.
+     * Represents the class for the module we want to implement.
      * If left at default value, the system will automatically resolve this.
+     *
+     * @return The implemented module class
+     * @see Module
      */
     Class<? extends Module> module() default Default.class;
 
-    /** Holds a list of all authors that worked on the module, can be left empty */
+    /**
+     * Holds a list of all authors that worked on the module, can be left empty
+     *
+     * @return An immutable array of authors
+     */
     String[] authors() default {};
 
-    /** The module version or build ID */
+    /**
+     * The module version or build ID.
+     * As this contains a string, the defined version might be invalid!
+     *
+     * @return The module version represented as a string
+     * @see net.mountainblade.modular.Version
+     */
     String version() default "unknown";
 
     /**

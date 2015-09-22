@@ -33,7 +33,12 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Requires {
 
-    /** The class of the module we require */
+    /**
+     * The class of the module we require which will add the returned class
+     * as a dependency during the load cycle.
+     *
+     * @return The required module class
+     */
     Class<? extends Module>[] value();
 
 }

@@ -28,13 +28,13 @@ import java.lang.annotation.Target;
  *
  * <p>There are some special cases of "dependencies" that will get resolved automatically and handled differently. Some
  * of these special cases also take the {@link #from()} parameter into account, if you want to get objects from other
- * modules (cross-dependency injection).
+ * modules (cross-dependency injection).</p>
  * <ul>
  *     <li>{@link java.util.logging.Logger Logger} - If the field is a logger this will be filled with a module-specific
  *     logger instance. <b>No cross-dependency injection</b></li>
  *     <li>{@link net.mountainblade.modular.ModuleInformation ModuleInformation} - Holds the current module's
  *     information or the information of the specified one.</li>
- * </ul></p>
+ * </ul>
  *
  * @author spaceemotion
  * @version 1.0
@@ -43,10 +43,18 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Inject {
 
-    /** If specified, the object won't be injected and can be left at null, if it cannot be found. */
+    /**
+     * If specified, the object won't be injected and can be left at null, if it cannot be found.
+     *
+     * @return True if the injection should be optional
+     */
     boolean optional() default false;
 
-    /** If specified, this will get the object from another module instead (cross-dependency injection). */
+    /**
+     * If specified, this will get the object from another module instead (cross-dependency injection).
+     *
+     * @return A module class
+     */
     Class<? extends Module> from() default Current.class;
 
     /**

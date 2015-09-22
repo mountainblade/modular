@@ -36,7 +36,9 @@ public interface ModuleManager extends Module {
      * Simply provides a module instance and stores it in the registry.
      * This will skip all injection and method calls.
      *
-     * @param module the module
+     * @param module    The module instance
+     * @param <T>       The module type
+     * @return The module instance to allow method chaining
      * @see #provide(Module)
      */
     <T extends Module> T provideSimple(T module);
@@ -45,7 +47,9 @@ public interface ModuleManager extends Module {
      * Stores the given module instance in the registry,
      * but also executes all injection magic and calls the usual methods.
      *
-     * @param module the module
+     * @param module    The module instance
+     * @param <T>       The module type
+     * @return The module instance to allow method chaining
      * @see #provideSimple(Module)
      */
     <T extends Module> T provide(T module);
@@ -118,6 +122,7 @@ public interface ModuleManager extends Module {
      * Gets a specific module by its class.
      *
      * @param module    The module class
+     * @param <M>       The module type
      * @return An optional for the module instance
      */
     <M extends Module> Optional<M> getModule(Class<M> module);

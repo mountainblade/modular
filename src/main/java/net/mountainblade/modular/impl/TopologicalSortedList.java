@@ -23,10 +23,9 @@ import java.util.Iterator;
 
 /**
  * Represents a topological sorted list.
- * <p/>
  * The topological sort algorithm sorts a list of nodes in an order in where all the dependencies are fulfilled.
- * <p/>
- * <a href="http://en.wikipedia.org/wiki/Topological_sorting">Read more at Wikipedia!</a>
+ *
+ * Read more at <a href="http://en.wikipedia.org/wiki/Topological_sorting">Wikipedia</a>.
  *
  * @author spaceemotion
  * @author p000ison

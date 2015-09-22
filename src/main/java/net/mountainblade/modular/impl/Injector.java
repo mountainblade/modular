@@ -70,7 +70,7 @@ public class Injector extends Destroyable {
      * Injects the given module registry entry with its dependencies.
      *
      * @param moduleEntry    The entry to inject
-     * @throws InjectFailedException
+     * @throws InjectFailedException if the injection fails
      */
     public void inject(ModuleRegistry.Entry moduleEntry) throws InjectFailedException {
         inject(moduleEntry.getModule());
@@ -80,7 +80,7 @@ public class Injector extends Destroyable {
      * Injects the given module instance with its dependencies.
      *
      * @param module    The module instance
-     * @throws InjectFailedException
+     * @throws InjectFailedException if the injection fails
      */
     public void inject(Module module) throws InjectFailedException {
         for (Entry entry : discover(module.getClass())) {

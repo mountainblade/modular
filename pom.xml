@@ -27,8 +27,12 @@
     <version>1.0-SNAPSHOT</version>
 
     <name>Modular</name>
-    <description>Lightweight and easy to use module and dependency management system</description>
     <inceptionYear>2014</inceptionYear>
+    <description>
+        Lightweight and easy to use java module and dependency management system
+        with integrated field-only dependency injection
+    </description>
+
     <organization>
         <name>MountainBlade</name>
         <url>http://mountainblade.net</url>
@@ -40,6 +44,24 @@
             <email>spaceemotion@gmail.com</email>
         </developer>
     </developers>
+
+    <issueManagement>
+        <system>github</system>
+        <url>https://github.com/mountainblade/modular/issues</url>
+    </issueManagement>
+
+    <scm>
+        <connection>scm:git:github.com:mountainblade/modular.git</connection>
+        <developerConnection>scm:git:github.com:mountainblade/modular.git</developerConnection>
+        <url>https://github.com/mountainblade/modular</url>
+    </scm>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
 
     <!-- Properties -->
     <properties>
@@ -64,7 +86,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.12-beta-2</version>
+            <version>4.12</version>
             <scope>test</scope>
         </dependency>
 
@@ -104,6 +126,34 @@
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.4</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.10.3</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>
