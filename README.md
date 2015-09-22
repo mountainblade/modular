@@ -7,16 +7,19 @@ A copy of modular can be retrieved through maven. It is assumed that it is known
 repository and dependency as this project uses that build system.
 
 ```xml
-<repository>
-    <id>modular</id>
-    <url>http://repo.serkprojects.com/content/groups/public/</url>
-</repository>
-
 <dependency>
     <groupId>net.mountainblade</groupId>
     <artifactId>modular</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
 </dependency>
+```
+
+If the dependency could not be found, you might have to add the Sonatype Nexus repository to your build script:
+```xml
+<repository>
+    <id>modular</id>
+    <url>https://oss.sonatype.org/content/groups/public/</url>
+</repository>
 ```
 
 # Usage guide
