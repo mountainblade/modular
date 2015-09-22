@@ -28,6 +28,7 @@
 
     <name>Modular</name>
     <inceptionYear>2014</inceptionYear>
+    <url>https://github.com/mountainblade/modular</url>
     <description>
         Lightweight and easy to use java module and dependency management system
         with integrated field-only dependency injection
