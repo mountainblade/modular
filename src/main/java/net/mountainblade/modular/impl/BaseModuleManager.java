@@ -93,8 +93,6 @@ public class BaseModuleManager implements ModuleManager {
     /**
      * Creates a new module manager instance.
      *
-     * <strong>It is not recommended to </strong>
-     *
      * @param registry       A registry instance
      * @param parentRealm    The parent realm, can be left at {@code null}
      * @param classLoader    A parent class loader, can be left at {@code null}
@@ -104,18 +102,29 @@ public class BaseModuleManager implements ModuleManager {
     }
 
     /**
-     * Creates a new module manager instance.
+     * Creates a new module manager instance with no parent module loader.
      *
-     * @param registry    A registry instance
-     * @param realm       The class realm to load our modules in
+     * @param registry        A registry instance
+     * @param realm           The class realm to load our modules in
      */
     public BaseModuleManager(ModuleRegistry registry, ClassRealm realm) {
+        this(registry, realm, (ModuleLoader) null);
+    }
+
+    /**
+     * Creates a new module manager instance.
+     *
+     * @param registry        A registry instance
+     * @param realm           The class realm to load our modules in
+     * @param parentLoader    A parent loader used by our local module loader, can be null
+     */
+    public BaseModuleManager(ModuleRegistry registry, ClassRealm realm, ModuleLoader parentLoader) {
         this.destroyables = new LinkedList<>();
         this.classpath = createClassPathSet(LOCAL_CLASSPATH);
 
         this.registry = registry;
         this.injector = new Injector(registry);
-        this.loader = new ModuleLoader(realm, registry, injector);
+        this.loader = new ModuleLoader(realm, registry, injector, parentLoader);
 
         destroyables.add(registry);
         destroyables.add(injector);

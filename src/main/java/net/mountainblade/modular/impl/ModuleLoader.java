@@ -60,20 +60,23 @@ public final class ModuleLoader {
     private final ClassRealm realm;
     private final ModuleRegistry registry;
     private final Injector injector;
+    private final ModuleLoader parentLoader;
 
     private final Collection<Class<?>> ignores;
 
     /**
      * Creates a new module loader.
      *
-     * @param realm       The realm we load the modules in, this requires their URLs to be added beforehand
-     * @param registry    The module registry to register the modules with
-     * @param injector    The injector to inject their fields with
+     * @param realm           The realm we load the modules in, this requires their URLs to be added beforehand
+     * @param registry        The module registry to register the modules with
+     * @param injector        The injector to inject their fields with
+     * @param parentLoader    A parent loader to get a few more ignored module classes from, can be null
      */
-    public ModuleLoader(ClassRealm realm, ModuleRegistry registry, Injector injector) {
+    public ModuleLoader(ClassRealm realm, ModuleRegistry registry, Injector injector, ModuleLoader parentLoader) {
         this.realm = realm;
         this.registry = registry;
         this.injector = injector;
+        this.parentLoader = parentLoader;
 
         ignores = new THashSet<>();
         setLoadingStrategy(ParentFirstStrategy.class);
@@ -380,14 +383,14 @@ public final class ModuleLoader {
 
         // Check all the interfaces
         for (Class<?> entry: aClass.getInterfaces()) {
-            if (entry != Module.class && !ignores.contains(entry)) {
+            if (entry != Module.class && !isIgnored(entry)) {
                 getRequirementsRecursively(entry, list);
             }
         }
 
         // Also check the superclass
         final Class<?> parent = aClass.getSuperclass();
-        if (parent != null && parent != Object.class && parent != Module.class && !ignores.contains(parent)) {
+        if (parent != null && parent != Object.class && parent != Module.class && !isIgnored(parent)) {
             getRequirementsRecursively(parent, list);
         }
     }
@@ -403,7 +406,7 @@ public final class ModuleLoader {
             }
 
             // Even though it was an ignored one, maybe the parent wasn't ignored
-            if (ignores.contains(anInterface)) {
+            if (isIgnored(anInterface)) {
                 final Class<? extends Module> recursiveLookup = getModuleClassRecursively(anInterface);
 
                 if (recursiveLookup != null) {
@@ -422,6 +425,10 @@ public final class ModuleLoader {
 
         // We still didn't find a proper module class search through our parents (superclass of superclass of super...)
         return getModuleClassRecursively(aClass.getSuperclass());
+    }
+
+    private boolean isIgnored(Class<?> moduleClass) {
+        return ignores.contains(moduleClass) || (parentLoader != null && parentLoader.isIgnored(moduleClass));
     }
 
 
