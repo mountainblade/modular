@@ -16,6 +16,7 @@
 package net.mountainblade.modular.impl;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import gnu.trove.iterator.hash.TObjectHashIterator;
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.THashSet;
@@ -119,6 +120,9 @@ public class BaseModuleManager implements ModuleManager {
      * @param parentLoader    A parent loader used by our local module loader, can be null
      */
     public BaseModuleManager(ModuleRegistry registry, ClassRealm realm, ModuleLoader parentLoader) {
+        Preconditions.checkNotNull(registry, "Invalid registry given, should not be null");
+        Preconditions.checkNotNull(realm, "Invalid realm given, should not be null");
+
         this.destroyables = new LinkedList<>();
         this.classpath = createClassPathSet(LOCAL_CLASSPATH);
 
