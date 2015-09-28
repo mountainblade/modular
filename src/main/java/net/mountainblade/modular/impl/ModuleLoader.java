@@ -79,7 +79,14 @@ public final class ModuleLoader {
         this.parentLoader = parentLoader;
 
         ignores = new THashSet<>();
-        setLoadingStrategy(ParentFirstStrategy.class);
+
+        // Inherit the parent's loading strategy if set
+        if (parentLoader == null) {
+            setLoadingStrategy(ParentFirstStrategy.class);
+
+        } else {
+            setLoadingStrategy(parentLoader.getRealm().getStrategy());
+        }
     }
 
     /**
