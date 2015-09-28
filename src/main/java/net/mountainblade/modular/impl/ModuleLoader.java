@@ -48,7 +48,7 @@ import java.util.logging.Logger;
  * @author spaceemotion
  * @version 1.0
  */
-public final class ModuleLoader extends Destroyable {
+public final class ModuleLoader {
     private static final Logger LOG = Logger.getLogger(ModuleLoader.class.getName());
 
     /** A map containing all meta data about the indexed classes */
@@ -390,11 +390,6 @@ public final class ModuleLoader extends Destroyable {
         if (parent != null && parent != Object.class && parent != Module.class && !ignores.contains(parent)) {
             getRequirementsRecursively(parent, list);
         }
-    }
-
-    @Override
-    protected void destroy() {
-        injector.destroy();
     }
 
     @SuppressWarnings("unchecked")
