@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2015 MountainBlade (http://mountainblade.net)
+ * Copyright (C) 2014-2016 MountainBlade (http://mountainblade.net)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,12 @@
 package net.mountainblade.modular.demo;
 
 import net.mountainblade.modular.Module;
-import net.mountainblade.modular.annotations.*;
+import net.mountainblade.modular.annotations.Implementation;
+import net.mountainblade.modular.annotations.Initialize;
+import net.mountainblade.modular.annotations.Inject;
+import net.mountainblade.modular.annotations.Shutdown;
 
+import java.util.Scanner;
 import java.util.logging.Logger;
 
 /**
@@ -35,6 +39,15 @@ public class JarModule implements Module {
     @Initialize
     public void initialize() {
         logger.info("Hello world!");
+
+        final Scanner scanner = new Scanner(getClass().getResourceAsStream("/loremipsum.txt")).useDelimiter("\\A");
+        try {
+            assert scanner.hasNext();
+            logger.info("Text from a resource: " + scanner.next());
+
+        } finally {
+            scanner.close();
+        }
     }
 
     @Shutdown
